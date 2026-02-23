@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% set active_nav = "galaxy" %}
+{% block content %}
+
+<section class="card">
+  <div class="row between head-row wrap-flex gap-12">
+    <div>
+      <h1>Galaxy Scanner</h1>
+      <div class="muted mt-4 fs-13">Übersicht der zuletzt gescannten Systeme (Helper → Local).</div>
+    </div>
+
+    <div class="pills">
+      <div class="pill">{{ scans|length }} Systeme gescannt</div>
+      <a class="btn btn-sm ghost" href="/export.csv">Export</a>
+    </div>
+  </div>
+
+  <div class="row gap mt-14 wrap-flex" aria-label="Galaxy Filter">
+    <a class="btn btn-sm {% if g != 0 %}ghost{% endif %}" href="/galaxy" aria-current="{% if g == 0 %}page{% endif %}">
+      Alle
+    </a>
+    {% for gal in galaxies %}
+      <a class="btn btn-sm {% if g != gal %}ghost{% endif %}" href="/galaxy?g={{ gal }}" aria-current="{% if g == gal %}page{% endif %}">
+        Galaxie {{ gal }}
+      </a>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="card">
+  {% if scans %}
+    <div class="table-wrap">
+      <table class="table table-clickable" aria-label="Gescannte Systeme">
+        <thead>
+          <tr>
+            <th>Galaxie</th>
+            <th>System</th>
+            <th>Planeten</th>
+            <th>Zuletzt gescannt</th>
+            <th>Alter</th>
+            <th></th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for s in scans %}
+            {% set scanned = s.scanned_at %}
+            {% if scanned %}
+              {% set age_seconds = (now - scanned).total_seconds() %}
+              {% if age_seconds < 0 %}{% set age_seconds = 0 %}{% endif %}
+              {% set age_hours = (age_seconds / 3600) | int %}
+            {% else %}
+              {% set age_hours = none %}
+            {% endif %}
+
+            {% set details_url = "/galaxy/%s/%s" | format(s.galaxy, s.system) %}
+
+            <tr class="tr-click tr-nav"
+                tabindex="0"
+                role="link"
+                aria-label="System {{ s.galaxy }}:{{ s.system }} öffnen"
+                data-href="{{ details_url }}">
+              <td class="coord">{{ s.galaxy }}</td>
+              <td class="coord">{{ s.system }}</td>
+              <td><span class="pill fs-11">{{ s.planets_found }}</span></td>
+
+              <td class="muted">
+                {% if scanned %}{{ scanned.strftime("%d.%m.%y %H:%M") }}{% else %}—{% endif %}
+              </td>
+
+              <td>
+                {% if age_hours is none %}
+                  <span class="pill fs-11">—</span>
+                {% elif age_hours < 1 %}
+                  <span class="pill pill-good fs-11">Frisch</span>
+                {% elif age_hours < 24 %}
+                  <span class="pill fs-11">{{ age_hours }}h</span>
+                {% elif age_hours < 168 %}
+                  <span class="pill pill-warn fs-11">{{ (age_hours / 24) | int }}d</span>
+                {% else %}
+                  <span class="pill pill-bad fs-11">{{ (age_hours / 168) | int }}w</span>
+                {% endif %}
+              </td>
+
+              <td class="actions">
+                <a class="btn btn-sm ghost row-link" href="{{ details_url }}">Details</a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="muted fs-13 mt-12">
+      Tipp: Klick auf eine Zeile oder Enter, um das System zu öffnen.
+    </div>
+  {% else %}
+    <div class="empty-state">
+      Noch keine Systeme gescannt — navigiere im Spiel durch die Galaxy-View.
+    </div>
+  {% endif %}
+</section>
+
+{% endblock %}

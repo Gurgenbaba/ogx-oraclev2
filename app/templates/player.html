@@ -1,0 +1,210 @@
+<!-- app/templates/player.html -->
+{% extends "base.html" %}
+{% set active_nav = "search" %}
+{% block content %}
+
+<section class="card">
+  <div class="row between head-row wrap-flex gap-12">
+    <h1 class="player-title">{{ player.name }}</h1>
+
+    <div class="pills">
+      <div class="pill">Astro {% if astro is not none %}{{ astro }}{% else %}—{% endif %}</div>
+      <div class="pill">Planeten {{ actual_colonies }} / {{ max_colonies }}</div>
+
+      {% if missing > 0 %}
+        <div class="pill pill-warn">⚠ Fehlt: {{ missing }} (Ghost Colony?)</div>
+      {% elif missing < 0 %}
+        <div class="pill pill-bad">✗ Overcap: {{ missing | abs }} (Astro / Eintrag prüfen)</div>
+      {% else %}
+        <div class="pill pill-good">✓ Vollständig</div>
+      {% endif %}
+
+      {% if last_update %}
+        <div class="pill">Zuletzt: {{ last_update.strftime("%d.%m.%Y %H:%M") }}</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <form method="post" action="/player/{{ player.name }}/astro" class="row gap astro-row">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input class="input grow" name="astro_level" type="number" min="0" max="200"
+           placeholder="Astro-Level setzen"
+           value="{{ astro if astro is not none else '' }}" />
+    <button class="btn ghost" type="submit">Speichern</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Kolonien ({{ actual_colonies }})</h2>
+
+  {% if colonies %}
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>#</th><th>G</th><th>S</th><th>P</th><th>Planet</th><th>Mond</th>
+            <th>Ally</th><th>Hint</th><th>Main</th><th>Notiz</th><th>Quelle</th><th>Zuletzt</th><th></th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for c in colonies %}
+            <tr class="tr-click {% if c.is_main %}main-planet{% endif %}"
+                data-detail="{{ c.id }}"
+                title="Klicken für Details / Bearbeiten">
+              <td class="muted">{{ loop.index }}</td>
+              <td class="coord">{{ c.galaxy }}</td>
+              <td class="coord">{{ c.system }}</td>
+              <td class="coord">{{ c.position }}</td>
+
+              <td class="planet-cell">
+                <span class="planet-name" title="{{ c.planet_name }}">{{ c.planet_name }}</span>
+                {% if c.is_main %}<span class="tag tag-main">MAIN</span>{% endif %}
+              </td>
+
+              <td>
+                {% if c.has_moon %}
+                  <span class="tag tag-moon">🌙{% if c.moon_name %} {{ c.moon_name }}{% endif %}</span>
+                {% else %}
+                  <span class="dim">—</span>
+                {% endif %}
+              </td>
+
+              <td>
+                {% if c.ally %}
+                  <a class="tag ml-0" href="/?tab=ally&ally={{ c.ally | urlencode }}">{{ c.ally }}</a>
+                {% else %}
+                  <span class="dim">—</span>
+                {% endif %}
+              </td>
+
+              <td class="muted">
+                {% if c.travel_hint_minutes %}{{ c.travel_hint_minutes }} min{% else %}<span class="dim">—</span>{% endif %}
+              </td>
+
+              <td class="center">
+                {% if c.is_main %}✅{% else %}<span class="dim">—</span>{% endif %}
+              </td>
+
+              <td class="note-cell muted" title="{{ c.note if c.note else '' }}">
+                {% if c.note %}{{ c.note }}{% else %}<span class="dim">—</span>{% endif %}
+              </td>
+
+              <td><span class="dim">{{ c.source }}</span></td>
+              <td class="muted">{{ c.last_seen_at.strftime("%d.%m.%y %H:%M") }}</td>
+
+              <td class="actions">
+                <button class="btn btn-sm ghost" type="button" data-open="{{ c.id }}">▸</button>
+              </td>
+            </tr>
+
+            <tr class="tr-detail" data-detail-row="{{ c.id }}">
+              <td colspan="13">
+                <div class="detail-box">
+
+                  <div class="detail-head row between gap-xs">
+                    <div class="muted fs-13">
+                      Koordinaten:
+                      <a class="coord fs-13" href="/galaxy/{{ c.galaxy }}/{{ c.system }}">{{ c.galaxy }}:{{ c.system }}:{{ c.position }}</a>
+                      {% if c.has_moon and c.moon_name %}
+                        &bull; <span class="tag tag-moon">🌙 {{ c.moon_name }}</span>
+                      {% endif %}
+                    </div>
+
+                    <form method="post" action="/colony/{{ c.id }}/delete" class="delete-form">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                      <input type="hidden" name="player_name" value="{{ player.name }}" />
+                      <button class="btn btn-sm danger" type="submit">Löschen</button>
+                    </form>
+                  </div>
+
+                  <div class="detail-grid">
+                    <div class="field">
+                      <div class="field-label">Planetname</div>
+                      <input class="input input-sm" form="edit-{{ c.id }}" name="planet_name" value="{{ c.planet_name }}" />
+                    </div>
+                    <div class="field">
+                      <div class="field-label">Hint (Minuten)</div>
+                      <input class="input input-sm" form="edit-{{ c.id }}" name="travel_hint_minutes" type="number" min="0"
+                             placeholder="optional"
+                             value="{{ c.travel_hint_minutes if c.travel_hint_minutes else '' }}" />
+                    </div>
+                    <div class="field">
+                      <div class="field-label">Notiz</div>
+                      <input class="input input-sm" form="edit-{{ c.id }}" name="note" placeholder="optional"
+                             value="{{ c.note if c.note else '' }}" />
+                    </div>
+                  </div>
+
+                  <div class="detail-actions">
+                    <div class="detail-checks">
+                      <label class="check">
+                        <input type="checkbox" form="edit-{{ c.id }}" name="is_main" value="true" {% if c.is_main %}checked{% endif %} />
+                        Main Planet
+                      </label>
+                      <label class="check">
+                        <input type="checkbox" form="edit-{{ c.id }}" name="has_moon" value="true" {% if c.has_moon %}checked{% endif %} />
+                        Mond vorhanden
+                      </label>
+                      <input class="input input-sm mw-200" form="edit-{{ c.id }}" name="moon_name"
+                             placeholder="Mondname (optional)"
+                             value="{{ c.moon_name if c.moon_name else '' }}" />
+                    </div>
+
+                    <form method="post" action="/colony/{{ c.id }}/update" id="edit-{{ c.id }}">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                      <input type="hidden" name="player_name" value="{{ player.name }}" />
+                      <button class="btn btn-sm" type="submit">Speichern</button>
+                    </form>
+                  </div>
+
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty-state">Noch keine Kolonien eingetragen.</div>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>Kolonie hinzufügen</h2>
+
+  <form method="post" action="/colony/add">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="player_name" value="{{ player.name }}" />
+
+    <div class="form-row">
+      <input class="input grow" name="galaxy" type="number" min="1" placeholder="Galaxie" required />
+      <input class="input grow" name="system" type="number" min="1" placeholder="System" required />
+      <input class="input grow" name="position" type="number" min="1" placeholder="Position" required />
+    </div>
+
+    <div class="form-row">
+      <input class="input grow" name="planet_name" placeholder="Planetname (z.B. Colonie)" />
+      <input class="input grow" name="travel_hint_minutes" type="number" min="0" placeholder="Hint Minuten (optional)" />
+    </div>
+
+    <div class="form-row align-center wrap-flex">
+      <label class="check">
+        <input type="checkbox" name="is_main" value="true" />
+        Main Planet
+      </label>
+      <label class="check">
+        <input type="checkbox" name="has_moon" value="true" />
+        Mond
+      </label>
+      <input class="input grow" name="moon_name" placeholder="Mondname (optional)" />
+    </div>
+
+    <div class="form-row">
+      <input class="input grow" name="note" placeholder="Notiz (optional)" />
+      <button class="btn" type="submit">Speichern</button>
+    </div>
+  </form>
+</section>
+
+{% endblock %}

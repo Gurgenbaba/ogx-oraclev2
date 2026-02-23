@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% set active_nav = "import" %}
+{% block content %}
+
+<section class="card">
+  <div class="row between head-row wrap-flex gap-12">
+    <div>
+      <h1>CSV Import</h1>
+      <div class="muted mt-4 fs-13">Bulk-Import für Spieler &amp; Kolonien (lokale SQLite).</div>
+    </div>
+
+    <div class="pills">
+      <a class="btn btn-sm ghost" href="/">Suche</a>
+      <a class="btn btn-sm ghost" href="/galaxy">Galaxy</a>
+      <a class="btn btn-sm ghost" href="/export.csv">Export</a>
+    </div>
+  </div>
+
+  {% if summary %}
+    <div class="import-summary mt-16">
+      ✓ Import abgeschlossen —
+      <strong>{{ summary.imported }}</strong> neu &bull;
+      <strong>{{ summary.updated }}</strong> aktualisiert &bull;
+      <strong>{{ summary.players }}</strong> neue Spieler
+      {% if summary.skipped and summary.skipped != "0" %}
+        &bull; <strong>{{ summary.skipped }}</strong> übersprungen
+      {% endif %}
+    </div>
+  {% endif %}
+
+  <div class="import-grid mt-16">
+    <div class="import-panel">
+      <div class="muted fs-13">Erwartetes Format</div>
+      <div class="mono mt-4">
+        <span class="code-inline">player, galaxy, system, position, planet_name, is_main, has_moon, moon_name, travel_hint_minutes, note</span>
+      </div>
+
+      <div class="import-steps mt-16">
+        <div class="step">
+          <div class="step-dot">1</div>
+          <div>
+            <div class="step-title">CSV auswählen</div>
+            <div class="muted fs-13">UTF-8 wird empfohlen. BOM ist ok (utf-8-sig wird akzeptiert).</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-dot">2</div>
+          <div>
+            <div class="step-title">Import startet</div>
+            <div class="muted fs-13">Duplikate werden erkannt (Player + Koordinaten) und aktualisiert.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-dot">3</div>
+          <div>
+            <div class="step-title">Ergebnis-Übersicht</div>
+            <div class="muted fs-13">Du wirst zurück zur Import-Seite mit Summary geleitet.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="limit-box mt-16">
+        <div class="pill fs-11">Limit: 2 MB</div>
+        <div class="pill fs-11">Max: 25.000 Rows</div>
+        <div class="pill fs-11">Feld-Limit: 512 Zeichen</div>
+      </div>
+    </div>
+
+    <div class="import-panel">
+      <div class="muted fs-13">Upload</div>
+
+      <form id="import-form" method="post" action="/import" enctype="multipart/form-data" class="mt-12">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+        <label class="dropzone">
+          <input class="dropzone-input" type="file" name="file" accept=".csv" required />
+          <div class="dropzone-inner">
+            <div class="dropzone-title">CSV Datei auswählen</div>
+            <div class="muted fs-13">Klick zum Auswählen (Drag &amp; Drop optional je nach Browser).</div>
+          </div>
+        </label>
+
+        <div class="row between wrap-flex gap-12 mt-14">
+          <button class="btn" type="submit">Import starten</button>
+          <a class="btn ghost" href="/export.csv">⬇ Export (Backup)</a>
+        </div>
+      </form>
+
+      <hr class="sep" />
+
+      <details>
+        <summary class="muted">Beispiel CSV anzeigen</summary>
+<pre class="codeblock">player,galaxy,system,position,planet_name,is_main,has_moon,moon_name,travel_hint_minutes,note
+Mars,7,29,4,Colonie,false,false,,39,
+Mars,7,263,9,Planète Mère,true,true,Alpha,,
+LordOfGoonerZ,1,191,5,Colonie,true,true,Lune,,</pre>
+      </details>
+
+      <details class="mt-12">
+        <summary class="muted">Tipps &amp; häufige Fehler</summary>
+        <div class="mt-12 muted fs-13">
+          <div>• Spaltennamen können auch <span class="code-inline">name/g/s/pos/planet</span> heißen.</div>
+          <div>• Leere Slots werden ignoriert.</div>
+          <div>• Ungültige Koordinaten (≤0) werden übersprungen.</div>
+          <div>• Zeilen mit fehlerhaften Werten werden übersprungen, der Rest läuft weiter.</div>
+        </div>
+      </details>
+    </div>
+  </div>
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/import.js"></script>
+{% endblock %}

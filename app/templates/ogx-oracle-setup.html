@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OGX Oracle — Setup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&family=Exo+2:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #07090f;
+    --bg2:      #0d1117;
+    --panel:    #111827;
+    --border:   #1e2d45;
+    --accent:   #00d4ff;
+    --accent2:  #0077aa;
+    --green:    #00ff9d;
+    --orange:   #ff8c00;
+    --text:     #c8d6e5;
+    --muted:    #4a6380;
+    --mono:     'Share Tech Mono', monospace;
+    --sans:     'Exo 2', sans-serif;
+    --head:     'Rajdhani', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Grid overlay ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+
+  /* ── Scanline ── */
+  body::after {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background: repeating-linear-gradient(
+      0deg, transparent, transparent 2px,
+      rgba(0,0,0,.08) 2px, rgba(0,0,0,.08) 4px
+    );
+    pointer-events: none;
+  }
+
+  .wrap { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding: 0 24px 80px; }
+
+  /* ── Hero ── */
+  .hero {
+    padding: 64px 0 48px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+  .hero::after {
+    content: '';
+    position: absolute; bottom: -1px; left: 0;
+    width: 200px; height: 1px;
+    background: var(--accent);
+    box-shadow: 0 0 12px var(--accent);
+  }
+
+  .hero-tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .hero-tag::before {
+    content: '';
+    width: 24px; height: 1px;
+    background: var(--accent);
+    box-shadow: 0 0 6px var(--accent);
+  }
+
+  h1 {
+    font-family: var(--head);
+    font-size: clamp(36px, 7vw, 64px);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: 2px;
+    color: #fff;
+    text-shadow: 0 0 40px rgba(0,212,255,.3);
+    margin-bottom: 12px;
+  }
+  h1 span { color: var(--accent); }
+
+  .hero-sub {
+    font-size: 15px;
+    color: var(--muted);
+    font-family: var(--mono);
+    margin-bottom: 32px;
+  }
+
+  .badge-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .badge {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--muted);
+  }
+  .badge.green { border-color: var(--green); color: var(--green); }
+  .badge.blue  { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Section ── */
+  .section { margin-top: 48px; }
+
+  .section-head {
+    font-family: var(--head);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 20px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .section-head::after {
+    content: '';
+    flex: 1; height: 1px;
+    background: linear-gradient(90deg, var(--border), transparent);
+  }
+  .step-num {
+    width: 22px; height: 22px;
+    border: 1px solid var(--accent);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  /* ── Card ── */
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .card::before {
+    content: '';
+    position: absolute; top: 0; left: 0;
+    width: 3px; height: 100%;
+    background: linear-gradient(180deg, var(--accent), transparent);
+  }
+
+  .card h3 {
+    font-family: var(--head);
+    font-size: 18px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 12px;
+    letter-spacing: 1px;
+  }
+
+  .card p { color: var(--text); margin-bottom: 10px; }
+  .card p:last-child { margin-bottom: 0; }
+
+  /* ── Steps ── */
+  .steps { display: flex; flex-direction: column; gap: 16px; }
+  .step {
+    display: grid;
+    grid-template-columns: 32px 1fr;
+    gap: 16px;
+    align-items: start;
+  }
+  .step-icon {
+    width: 32px; height: 32px;
+    border: 1px solid var(--accent2);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+    background: rgba(0,212,255,.05);
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .step-body h4 {
+    font-family: var(--head);
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 6px;
+  }
+  .step-body p { color: var(--muted); font-size: 14px; }
+  .step-body a { color: var(--accent); text-decoration: none; }
+  .step-body a:hover { text-decoration: underline; }
+
+  /* ── Code block ── */
+  pre, code {
+    font-family: var(--mono);
+    font-size: 13px;
+  }
+  pre {
+    background: #05080e;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px 20px;
+    overflow-x: auto;
+    color: var(--green);
+    position: relative;
+    margin-top: 12px;
+    line-height: 1.8;
+  }
+  pre .c { color: var(--muted); }
+  pre .k { color: var(--accent); }
+  pre .s { color: var(--orange); }
+
+  code {
+    background: rgba(0,212,255,.08);
+    border: 1px solid rgba(0,212,255,.15);
+    border-radius: 3px;
+    padding: 1px 6px;
+    color: var(--accent);
+    font-size: 13px;
+  }
+
+  /* ── Copy button ── */
+  .code-wrap { position: relative; margin-top: 12px; }
+  .copy-btn {
+    position: absolute; top: 8px; right: 8px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--muted);
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 3px 8px;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .copy-btn:hover { color: var(--accent); border-color: var(--accent); }
+  .copy-btn.copied { color: var(--green); border-color: var(--green); }
+
+  /* ── Feature grid ── */
+  .features {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+    margin-top: 20px;
+  }
+  .feature {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px;
+    transition: border-color .2s;
+  }
+  .feature:hover { border-color: var(--accent2); }
+  .feature-icon { font-size: 20px; margin-bottom: 8px; }
+  .feature h4 {
+    font-family: var(--head);
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 4px;
+  }
+  .feature p { font-size: 13px; color: var(--muted); }
+
+  /* ── Key display ── */
+  .key-box {
+    background: #05080e;
+    border: 1px solid var(--orange);
+    border-radius: 4px;
+    padding: 16px 20px;
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .key-box .key-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--orange);
+    letter-spacing: 2px;
+    white-space: nowrap;
+  }
+  .key-box .key-val {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: #fff;
+    word-break: break-all;
+    flex: 1;
+  }
+
+  /* ── Warning ── */
+  .warn {
+    background: rgba(255,140,0,.06);
+    border: 1px solid rgba(255,140,0,.3);
+    border-radius: 4px;
+    padding: 12px 16px;
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--orange);
+    font-family: var(--mono);
+  }
+  .warn::before { content: '⚠ '; }
+
+  /* ── Divider ── */
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border), transparent);
+    margin: 40px 0;
+  }
+
+  /* ── Footer ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding-top: 24px;
+    margin-top: 64px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  footer span {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* ── Glow pulse ── */
+  @keyframes glow {
+    0%, 100% { box-shadow: 0 0 8px rgba(0,212,255,.3); }
+    50%       { box-shadow: 0 0 20px rgba(0,212,255,.6); }
+  }
+  .glow { animation: glow 3s ease-in-out infinite; }
+
+  /* ── Download btn ── */
+  .dl-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: transparent;
+    border: 1px solid var(--accent);
+    border-radius: 3px;
+    color: var(--accent);
+    font-family: var(--head);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    padding: 10px 20px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all .2s;
+    margin-top: 16px;
+  }
+  .dl-btn:hover {
+    background: rgba(0,212,255,.08);
+    box-shadow: 0 0 16px rgba(0,212,255,.2);
+  }
+  .dl-btn svg { flex-shrink: 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ── Hero ── -->
+  <div class="hero">
+    <div class="hero-tag">Installationsanleitung</div>
+    <h1>OGX <span>ORACLE</span></h1>
+    <div class="hero-sub">// Spieler · Allianzen · Kolonien — lokal tracken</div>
+    <div class="badge-row">
+      <div class="badge green">v1.5.1 Collector</div>
+      <div class="badge blue">FastAPI + SQLite</div>
+      <div class="badge">localhost:8000</div>
+      <div class="badge">Tampermonkey</div>
+    </div>
+  </div>
+
+  <!-- ── Was ist OGX Oracle ── -->
+  <div class="section">
+    <div class="section-head">Übersicht</div>
+    <div class="features">
+      <div class="feature">
+        <div class="feature-icon">🌌</div>
+        <h4>Auto-Scan</h4>
+        <p>Beim Öffnen der Galaxy-Ansicht werden Daten automatisch erfasst und lokal gespeichert.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🔍</div>
+        <h4>Spieler suchen</h4>
+        <p>Alle Kolonien eines Spielers auf einen Blick. Koordinaten, Mondinfo, Notizen.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🏰</div>
+        <h4>Allianz-Tracker</h4>
+        <p>Welche Spieler gehören zu welcher Ally? Wird automatisch beim Scannen befüllt.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">📡</div>
+        <h4>Menü-Integration</h4>
+        <p>OGX Oracle Button direkt im Spiel-Menü neben "OGX Core". Rechtsklick = API Key.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Schritt 1: Python ── -->
+  <div class="section">
+    <div class="section-head"><div class="step-num">1</div>Voraussetzungen</div>
+    <div class="card">
+      <h3>Python 3.11+</h3>
+      <p>OGX Oracle läuft lokal als Python-Server. Du brauchst Python 3.11 oder neuer.</p>
+      <div class="code-wrap">
+        <pre><span class="c"># Version prüfen</span>
+python --version
+
+<span class="c"># Download falls nicht installiert:</span>
+<span class="c"># https://www.python.org/downloads/</span></pre>
+        <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+      </div>
+      <p style="margin-top:12px;">Außerdem brauchst du <strong>Tampermonkey</strong> im Browser:</p>
+      <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">
+        <a class="dl-btn" href="https://www.tampermonkey.net/" target="_blank">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Tampermonkey installieren
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Schritt 2: App ── -->
+  <div class="section">
+    <div class="section-head"><div class="step-num">2</div>App starten</div>
+    <div class="card">
+      <h3>Server hochfahren</h3>
+      <p>Entpacke den OGX Oracle Ordner und führe folgendes in PowerShell aus:</p>
+      <div class="code-wrap">
+        <pre><span class="c"># Einmalig: Abhängigkeiten installieren</span>
+python -m venv .venv
+.venv\Scripts\python.exe -m pip install fastapi uvicorn sqlalchemy aiosqlite pydantic pydantic-settings python-multipart jinja2
+
+<span class="c"># App starten (danach immer so)</span>
+.venv\Scripts\python.exe -m uvicorn app.main:app --reload</pre>
+        <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+      </div>
+      <p style="margin-top:12px;">Die App läuft dann unter <code>http://127.0.0.1:8000</code></p>
+    </div>
+  </div>
+
+  <!-- ── Schritt 3: Script ── -->
+  <div class="section">
+    <div class="section-head"><div class="step-num">3</div>Collector Script installieren</div>
+    <div class="card">
+      <h3>Tampermonkey Script einrichten</h3>
+      <div class="steps">
+        <div class="step">
+          <div class="step-icon">1</div>
+          <div class="step-body">
+            <h4>Tampermonkey öffnen</h4>
+            <p>Klicke auf das Tampermonkey-Symbol im Browser → <strong>Dashboard</strong> → <strong>Neues Script</strong></p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-icon">2</div>
+          <div class="step-body">
+            <h4>Script einfügen</h4>
+            <p>Den gesamten Inhalt der Datei <code>ogx-oracle-collector.user.js</code> in den Editor kopieren und speichern <strong>(Strg+S)</strong></p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-icon">3</div>
+          <div class="step-body">
+            <h4>Script aktivieren</h4>
+            <p>Im Dashboard sicherstellen dass das Script auf <strong>Aktiviert</strong> steht (grüner Toggle)</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-icon">4</div>
+          <div class="step-body">
+            <h4>OGX aufrufen</h4>
+            <p>Gehe zu <a href="https://uni1.playogx.com" target="_blank">uni1.playogx.com</a> — im Menü erscheint automatisch der <strong>"OGX Oracle"</strong> Button unter "OGX Core"</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Schritt 4: API Key ── -->
+  <div class="section">
+    <div class="section-head"><div class="step-num">4</div>API Key einrichten</div>
+    <div class="card">
+      <h3>Ingest absichern (optional für Localhost)</h3>
+      <p>Der API Key verhindert, dass fremde Seiten Daten in deine Datenbank schreiben. Für Localhost-Betrieb ist er optional, aber empfohlen.</p>
+
+      <div class="key-box">
+        <span class="key-label">DEFAULT KEY</span>
+        <span class="key-val">svxlPbZBtZ9z79F8v0UIyeegaumjTJzy</span>
+      </div>
+
+      <p style="margin-top:16px;">Den Key im Spiel setzen:</p>
+      <div class="steps" style="margin-top:12px;">
+        <div class="step">
+          <div class="step-icon">→</div>
+          <div class="step-body">
+            <p><strong>Rechtsklick</strong> auf den <strong>"OGX Oracle"</strong> Button im Spiel-Menü → Key eingeben → Enter</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-icon">→</div>
+          <div class="step-body">
+            <p>Denselben Key in der <code>.env</code> Datei eintragen:<br>
+            <code>OGX_INGEST_API_KEY=dein-key-hier</code></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="warn">Key niemals mit anderen teilen wenn du die App öffentlich betreibst.</div>
+    </div>
+  </div>
+
+  <!-- ── Nutzung ── -->
+  <div class="section">
+    <div class="section-head">Nutzung</div>
+    <div class="card">
+      <h3>Galaxy scannen</h3>
+      <p>Öffne im Spiel die <strong>Galaxy-Ansicht</strong>. Das Script erfasst automatisch alle sichtbaren Planeten und sendet sie an OGX Oracle. Der Status wird neben dem "LOS!" Button angezeigt:</p>
+      <div class="code-wrap" style="margin-top:12px;">
+        <pre><span class="k">◉ Oracle</span>   <span class="c">— bereit</span>
+<span class="k" style="color:var(--green)">✓ +5 ~2</span>    <span class="c">— 5 neu importiert, 2 aktualisiert</span>
+<span class="k" style="color:var(--orange)">⚠ 0 Rows</span>  <span class="c">— leeres System (niemand da)</span>
+<span class="k" style="color:#ff4444">✗ Offline?</span> <span class="c">— OGX Oracle Server nicht gestartet</span></pre>
+      </div>
+
+      <div class="divider" style="margin: 20px 0;"></div>
+
+      <h3>Daten abrufen</h3>
+      <div class="steps" style="margin-top:12px;">
+        <div class="step">
+          <div class="step-icon">🔍</div>
+          <div class="step-body">
+            <h4>Spieler suchen</h4>
+            <p>Auf <a href="http://127.0.0.1:8000" target="_blank">127.0.0.1:8000</a> → Spielername eintippen → alle Kolonien sehen</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-icon">🏰</div>
+          <div class="step-body">
+            <h4>Allianz-Tab</h4>
+            <p>Tab "Allianz" → alle bekannten Allys als Übersicht → Klick = alle Spieler dieser Ally</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-icon">🌌</div>
+          <div class="step-body">
+            <h4>Galaxy-Übersicht</h4>
+            <p>Tab "Galaxy" → alle gescannten Systeme mit Zeitstempel und Planetenanzahl</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-icon">💾</div>
+          <div class="step-body">
+            <h4>Export / Backup</h4>
+            <p>Tab "Import" → "Export (Backup)" → CSV mit allen Daten herunterladen</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Troubleshooting ── -->
+  <div class="section">
+    <div class="section-head">Troubleshooting</div>
+    <div class="card">
+      <h3>Häufige Probleme</h3>
+      <div class="steps" style="margin-top:8px;">
+        <div class="step">
+          <div class="step-icon">!</div>
+          <div class="step-body">
+            <h4>Badge zeigt "Offline?"</h4>
+            <p>Der Python-Server läuft nicht. PowerShell öffnen und <code>uvicorn</code> starten.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-icon">!</div>
+          <div class="step-body">
+            <h4>Badge zeigt "API KEY?"</h4>
+            <p>Rechtsklick auf den OGX Oracle Button im Menü → Key eingeben. Muss mit <code>OGX_INGEST_API_KEY</code> in der <code>.env</code> übereinstimmen.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-icon">!</div>
+          <div class="step-body">
+            <h4>OGX Oracle Button fehlt im Menü</h4>
+            <p>Seite neu laden (F5). Das Script versucht 3x den Button einzufügen (0s, 0.8s, 2.5s nach Seitenload).</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-icon">!</div>
+          <div class="step-body">
+            <h4>Badge zeigt "0 Rows"</h4>
+            <p>Das System ist leer oder die Galaxy-Ansicht hat noch nicht vollständig geladen. Kurz warten oder manuell auf den Badge klicken.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Footer ── -->
+  <footer>
+    <span>OGX ORACLE // GALAXY COLLECTOR v1.5.1</span>
+    <span>localhost · SQLite · FastAPI</span>
+  </footer>
+
+</div>
+
+<script>
+function copyCode(btn) {
+  const pre = btn.previousElementSibling;
+  const text = pre.textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'COPIED';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = 'COPY';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
+</script>
+</body>
+</html>

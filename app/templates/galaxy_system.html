@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% set active_nav = "galaxy" %}
+{% block content %}
+
+<section class="card">
+  <div class="row between head-row wrap-flex gap-12">
+    <div>
+      <h1>{{ galaxy }}:{{ system }}</h1>
+      <div class="muted mt-4 fs-13">
+        {% if scan %}
+          Zuletzt gescannt: {{ scan.scanned_at.strftime("%d.%m.%Y %H:%M") }}
+          &bull; {{ scan.planets_found }} Planeten
+        {% else %}
+          Noch nicht gescannt
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="pills">
+      <a class="btn btn-sm ghost" href="/galaxy?g={{ galaxy }}">← Galaxie {{ galaxy }}</a>
+      <a class="btn btn-sm ghost" href="/galaxy">Alle Systeme</a>
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="row between wrap-flex gap-12">
+    <h2>Belegte Positionen</h2>
+    <div class="pills">
+      <div class="pill">{{ colonies|length }} Kolonien</div>
+    </div>
+  </div>
+
+  {% if colonies %}
+    <div class="table-wrap">
+      <table class="table" aria-label="Kolonien in System {{ galaxy }}:{{ system }}">
+        <thead>
+          <tr>
+            <th>Pos</th>
+            <th>Planet</th>
+            <th>Mond</th>
+            <th>Spieler</th>
+            <th>Ally</th>
+            <th>Notiz</th>
+            <th>Zuletzt</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for c in colonies %}
+            <tr>
+              <td class="coord">{{ c.position }}</td>
+
+              <td>
+                <span class="planet-name" title="{{ c.planet_name }}">{{ c.planet_name }}</span>
+                {% if c.is_main %}<span class="tag tag-main">MAIN</span>{% endif %}
+              </td>
+
+              <td>
+                {% if c.has_moon %}
+                  <span class="tag tag-moon">🌙{% if c.moon_name %} {{ c.moon_name }}{% endif %}</span>
+                {% else %}
+                  <span class="dim">—</span>
+                {% endif %}
+              </td>
+
+              <td>
+                <a class="player-link" href="/player/{{ c.player.name }}">{{ c.player.name }}</a>
+              </td>
+
+              <td>
+                {% if c.ally %}
+                  <span class="tag">{{ c.ally }}</span>
+                {% else %}
+                  <span class="dim">—</span>
+                {% endif %}
+              </td>
+
+              <td class="muted fs-12" title="{{ c.note if c.note else '' }}">
+                {% if c.note %}{{ c.note }}{% else %}<span class="dim">—</span>{% endif %}
+              </td>
+
+              <td class="muted">{{ c.last_seen_at.strftime("%d.%m.%y %H:%M") }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty-state">Keine Kolonien für dieses System gefunden.</div>
+  {% endif %}
+</section>
+
+{% endblock %}
