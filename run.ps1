@@ -1,8 +1,8 @@
 # run.ps1 — OGX Oracle start script (Windows, production defaults)
 # Usage:
 #   ./run.ps1
-#   ./run.ps1 -Env dev -Port 8000 -Host 127.0.0.1 -Reload
-#   ./run.ps1 -Env prod -Host 0.0.0.0 -Port 8000
+#   ./run.ps1 -Env dev -Port 8000 -BindHost 127.0.0.1 -Reload
+#   ./run.ps1 -Env prod -BindHost 0.0.0.0 -Port 8000
 #
 # Notes:
 # - In prod: reload is OFF by default.
@@ -12,7 +12,9 @@ param(
   [ValidateSet("dev","prod")]
   [string]$Env = "prod",
 
-  [string]$Host = "127.0.0.1",
+  [Alias("Host")]
+  [string]$BindHost = "127.0.0.1",
+
   [int]$Port = 8000,
 
   [switch]$Reload
@@ -22,14 +24,14 @@ $ErrorActionPreference = "Stop"
 
 Write-Host "== OGX Oracle :: run.ps1 ==" -ForegroundColor Cyan
 Write-Host ("Env   : {0}" -f $Env)
-Write-Host ("Bind  : {0}:{1}" -f $Host, $Port)
+Write-Host ("Bind  : {0}:{1}" -f $BindHost, $Port)
 Write-Host ("Reload: {0}" -f ($Reload.IsPresent))
 
 # ----------------------------
 # Safe defaults (override via .env or your shell env)
 # ----------------------------
 $env:OGX_ENV = $Env
-$env:OGX_BIND_HOST = $Host
+$env:OGX_BIND_HOST = $BindHost
 $env:OGX_BIND_PORT = "$Port"
 
 # Security-ish defaults (tune in .env)
@@ -51,7 +53,7 @@ if (-not $env:OGX_SECRET_KEY) {
 # ----------------------------
 $uvicornArgs = @(
   "app.main:app",
-  "--host", $Host,
+  "--host", $BindHost,
   "--port", "$Port"
 )
 
