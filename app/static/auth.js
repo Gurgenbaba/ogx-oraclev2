@@ -41,12 +41,111 @@
     box.textContent = msg;
   }
 
+  // --------------------------------------------
+  // TOKEN PANEL (new base.html compatible)
+  // --------------------------------------------
+  function tokenEls() {
+    return {
+      panel: qs("#auth-token-panel"),
+      badge: qs("#auth-token-badge"),
+      title: qs("#auth-token-title"),
+      wrap: qs("#auth-token-wrap"),
+      ta: qs("#auth-token"),
+      copied: qs("#auth-token-copied"),
+      btnToggle: qs("#auth-token-toggle"),
+      btnCopy: qs("#auth-token-copy"),
+      btnHide: qs("#auth-token-hide"),
+    };
+  }
+
+  function collapseTokenPanel() {
+    const el = tokenEls();
+    if (el.wrap) el.wrap.style.display = "none";
+    if (el.btnToggle) el.btnToggle.textContent = "Anzeigen";
+    if (el.btnCopy) el.btnCopy.disabled = true;
+    if (el.copied) el.copied.style.display = "none";
+    if (el.ta) el.ta.scrollTop = 0;
+  }
+
+  function hideTokenPanel() {
+    const el = tokenEls();
+    if (el.ta) el.ta.value = "";
+    if (el.copied) el.copied.style.display = "none";
+    if (el.panel) el.panel.style.display = "none";
+    collapseTokenPanel();
+  }
+
+  function showTokenPanel(token, title, mode) {
+    // mode: "login" | "register" | "info"
+    const el = tokenEls();
+
+    if (el.title) el.title.textContent = title || "Token";
+    if (el.badge) {
+      if (mode === "register") el.badge.textContent = "🎉 Registriert";
+      else if (mode === "login") el.badge.textContent = "✅ Eingeloggt";
+      else el.badge.textContent = "✅ Erfolg";
+    }
+
+    if (el.ta) {
+      el.ta.value = String(token || "");
+      el.ta.scrollTop = 0;
+    }
+
+    if (el.panel) el.panel.style.display = "";
+    collapseTokenPanel();
+  }
+
+  function toggleTokenPanel() {
+    const el = tokenEls();
+    if (!el.wrap || !el.btnToggle) return;
+
+    const isOpen = el.wrap.style.display !== "none";
+    if (isOpen) {
+      collapseTokenPanel();
+      return;
+    }
+
+    // open
+    el.wrap.style.display = "";
+    el.btnToggle.textContent = "Verbergen";
+    if (el.btnCopy) el.btnCopy.disabled = false;
+    if (el.ta) el.ta.focus();
+  }
+
+  async function copyTokenToClipboard() {
+    const el = tokenEls();
+    if (!el.ta) return;
+
+    const val = String(el.ta.value || "").trim();
+    if (!val) return;
+
+    try {
+      await navigator.clipboard.writeText(val);
+    } catch {
+      // fallback for older browsers / blocked clipboard
+      el.ta.focus();
+      el.ta.select();
+      document.execCommand("copy");
+      el.ta.setSelectionRange(0, 0);
+    }
+
+    if (el.copied) {
+      el.copied.style.display = "";
+      window.setTimeout(() => { el.copied.style.display = "none"; }, 1200);
+    }
+  }
+
+  // --------------------------------------------
+  // MODAL
+  // --------------------------------------------
   function openModal() {
     const m = qs("#auth-modal");
     if (!m) return;
     setError("");
+    hideTokenPanel();
     m.hidden = false;
     m.setAttribute("aria-hidden", "false");
+
     const u = m.querySelector('#auth-login-form input[name="username"]');
     if (u) u.focus();
   }
@@ -57,8 +156,12 @@
     m.hidden = true;
     m.setAttribute("aria-hidden", "true");
     setError("");
+    hideTokenPanel();
   }
 
+  // --------------------------------------------
+  // STATUS
+  // --------------------------------------------
   async function refreshStatus() {
     const status = qs("#auth-status");
     const openBtn = qs("#auth-open");
@@ -72,7 +175,6 @@
       return;
     }
 
-    // Ask backend who we are
     try {
       const resp = await fetch("/auth/me", {
         headers: { Authorization: "Bearer " + token },
@@ -80,13 +182,12 @@
       if (!resp.ok) throw new Error("not_ok");
       const data = await resp.json();
       if (!data || !data.ok) throw new Error("bad");
-      const label = data.is_admin ? `${data.username} (Admin)` : data.username;
 
+      const label = data.is_admin ? `${data.username} (Admin)` : data.username;
       if (status) status.textContent = "Eingeloggt: " + label;
       if (openBtn) openBtn.style.display = "none";
       if (logoutBtn) logoutBtn.style.display = "";
     } catch (e) {
-      // Token invalid/expired/revoked
       clearToken();
       if (status) status.textContent = "Session abgelaufen – bitte neu einloggen";
       if (openBtn) openBtn.style.display = "";
@@ -94,41 +195,66 @@
     }
   }
 
+  // --------------------------------------------
+  // AUTH CALLS
+  // --------------------------------------------
   async function login(username, password) {
     setError("");
+    hideTokenPanel();
+
     const resp = await fetch("/auth/login", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ username, password }),
     });
     const data = await resp.json().catch(() => null);
+
     if (!resp.ok || !data || !data.ok || !data.token) {
       const err = data && data.error ? String(data.error) : "login_failed";
       throw new Error(err);
     }
+
     setToken(data.token);
     await refreshStatus();
-    closeModal();
+
+    // token panel (collapsed)
+    showTokenPanel(data.token, "Login erfolgreich – dein JWT", "login");
+
+    // OPTIONAL: auto-open + auto-copy
+    // toggleTokenPanel();
+    // await copyTokenToClipboard();
   }
 
   async function register(username, password) {
     setError("");
+    hideTokenPanel();
+
     const resp = await fetch("/auth/register", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ username, password }),
     });
     const data = await resp.json().catch(() => null);
+
     if (!resp.ok || !data || !data.ok || !data.token) {
       const err = data && data.error ? String(data.error) : "register_failed";
       throw new Error(err);
     }
+
     setToken(data.token);
     await refreshStatus();
-    closeModal();
+
+    // token panel (collapsed)
+    showTokenPanel(data.token, "Registrierung erfolgreich – dein JWT", "register");
+
+    // OPTIONAL: auto-open + auto-copy
+    // toggleTokenPanel();
+    // await copyTokenToClipboard();
   }
 
-  // Global fetch helper that adds CSRF + JWT for same-origin requests
+  // --------------------------------------------
+  // FETCH HELPER
+  // --------------------------------------------
   async function ogxFetch(url, options) {
     const opts = options ? { ...options } : {};
     opts.headers = opts.headers ? { ...opts.headers } : {};
@@ -142,6 +268,9 @@
     return fetch(url, opts);
   }
 
+  // --------------------------------------------
+  // UI BINDINGS
+  // --------------------------------------------
   function bindUi() {
     const openBtn = qs("#auth-open");
     const logoutBtn = qs("#auth-logout");
@@ -150,6 +279,7 @@
     if (logoutBtn) {
       logoutBtn.addEventListener("click", async () => {
         clearToken();
+        hideTokenPanel();
         await refreshStatus();
       });
     }
@@ -166,6 +296,12 @@
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") closeModal();
     });
+
+    // Token panel buttons
+    const el = tokenEls();
+    if (el.btnToggle) el.btnToggle.addEventListener("click", toggleTokenPanel);
+    if (el.btnCopy) el.btnCopy.addEventListener("click", copyTokenToClipboard);
+    if (el.btnHide) el.btnHide.addEventListener("click", hideTokenPanel);
 
     const lf = qs("#auth-login-form");
     if (lf) {

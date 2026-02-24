@@ -55,11 +55,12 @@
     </div>
   </header>
 
-  <!-- AUTH MODAL (minimal, CSP-safe, no inline JS) -->
+  <!-- AUTH MODAL (CSP-safe: no inline JS) -->
   <div id="auth-modal" class="modal" hidden aria-hidden="true">
     <div class="modal-backdrop" data-auth-close></div>
-    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="auth-title">
-      <div class="row between head-row">
+
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="auth-title" aria-describedby="auth-hint">
+      <div class="row between head-row" style="align-items:center;">
         <h2 id="auth-title" style="margin:0;">Account</h2>
         <button class="btn btn-sm ghost" type="button" data-auth-close aria-label="Schließen">✕</button>
       </div>
@@ -69,33 +70,88 @@
       </div>
 
       <div class="grid" style="margin-top:12px; gap:12px;">
+        <!-- LOGIN -->
         <form id="auth-login-form" class="card" style="padding:12px;">
           <div class="muted fs-13" style="margin-bottom:6px;">Login</div>
-          <label class="label">Username</label>
-          <input class="input" name="username" autocomplete="username" required maxlength="32" />
+
+          <label class="label" for="auth-login-username">Username</label>
+          <input id="auth-login-username" class="input" name="username" autocomplete="username" required maxlength="32" />
+
           <div style="height:8px;"></div>
-          <label class="label">Passwort</label>
-          <input class="input" name="password" type="password" autocomplete="current-password" required />
+
+          <label class="label" for="auth-login-password">Passwort</label>
+          <input id="auth-login-password" class="input" name="password" type="password" autocomplete="current-password" required />
+
           <div style="height:10px;"></div>
           <button class="btn" type="submit">Login</button>
         </form>
 
+        <!-- REGISTER -->
         <form id="auth-register-form" class="card" style="padding:12px;">
           <div class="muted fs-13" style="margin-bottom:6px;">Registrierung</div>
-          <label class="label">Username</label>
-          <input class="input" name="username" autocomplete="username" required maxlength="32" />
+
+          <label class="label" for="auth-register-username">Username</label>
+          <input id="auth-register-username" class="input" name="username" autocomplete="username" required maxlength="32" />
+
           <div style="height:8px;"></div>
-          <label class="label">Passwort</label>
-          <input class="input" name="password" type="password" autocomplete="new-password" required />
+
+          <label class="label" for="auth-register-password">Passwort</label>
+          <input id="auth-register-password" class="input" name="password" type="password" autocomplete="new-password" required />
+
           <div class="muted fs-12" style="margin-top:6px;">
             Passwort min. {{ 10 }} Zeichen (Policy in Settings).
           </div>
+
           <div style="height:10px;"></div>
           <button class="btn ghost" type="submit">Account erstellen</button>
         </form>
       </div>
 
+      <!-- ERROR -->
       <div id="auth-error" class="pill pill-warn" style="display:none; margin-top:12px;"></div>
+
+      <!-- TOKEN PANEL (OGX clean / compact / expandable) -->
+      <div id="auth-token-panel" class="card" style="display:none; padding:12px; margin-top:12px;">
+        <div class="row between" style="gap:12px; align-items:flex-start; flex-wrap:wrap;">
+          <div style="min-width:240px;">
+            <div class="row" style="gap:8px; align-items:center; flex-wrap:wrap;">
+              <span id="auth-token-badge" class="pill">✅ Erfolg</span>
+              <div class="muted fs-13" id="auth-token-title">Token</div>
+            </div>
+
+            <div class="muted fs-12" style="margin-top:8px; line-height:1.35;">
+              JWTs sind lang – normal. Du brauchst den <b>kompletten</b> String.
+            </div>
+          </div>
+
+          <div class="row" style="gap:8px; align-items:center;">
+            <button id="auth-token-toggle" class="btn btn-sm" type="button">Anzeigen</button>
+            <button id="auth-token-copy" class="btn btn-sm ghost" type="button" disabled>Copy</button>
+            <button id="auth-token-hide" class="btn btn-sm ghost" type="button">Schließen</button>
+          </div>
+        </div>
+
+        <div id="auth-token-wrap" style="display:none; margin-top:12px;">
+          <div class="muted fs-12" style="margin-bottom:6px;">Bearer Token:</div>
+
+          <textarea
+            id="auth-token"
+            class="input"
+            readonly
+            rows="3"
+            spellcheck="false"
+            style="width:100%; resize:vertical; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;"
+          ></textarea>
+
+          <div class="row between" style="margin-top:8px; gap:10px; flex-wrap:wrap; align-items:center;">
+            <div id="auth-token-copied" class="pill" style="display:none;">Kopiert ✅</div>
+            <div class="muted fs-12">
+              Header: <code>Authorization: Bearer &lt;token&gt;</code>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- /TOKEN PANEL -->
     </div>
   </div>
 
