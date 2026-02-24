@@ -32,7 +32,9 @@
     <div class="import-panel">
       <div class="muted fs-13">Erwartetes Format</div>
       <div class="mono mt-4">
-        <span class="code-inline">player, galaxy, system, position, planet_name, is_main, has_moon, moon_name, travel_hint_minutes, note</span>
+        <span class="code-inline">
+          player, galaxy, system, position, planet_name, is_main, has_moon, moon_name, travel_hint_minutes, note, last_seen_at, source, ally
+        </span>
       </div>
 
       <div class="import-steps mt-16">
@@ -90,10 +92,10 @@
 
       <details>
         <summary class="muted">Beispiel CSV anzeigen</summary>
-<pre class="codeblock">player,galaxy,system,position,planet_name,is_main,has_moon,moon_name,travel_hint_minutes,note
-Mars,7,29,4,Colonie,false,false,,39,
-Mars,7,263,9,Planète Mère,true,true,Alpha,,
-LordOfGoonerZ,1,191,5,Colonie,true,true,Lune,,</pre>
+<pre class="codeblock">player,galaxy,system,position,planet_name,is_main,has_moon,moon_name,travel_hint_minutes,note,last_seen_at,source,ally
+Mars,7,29,4,Colonie,false,false,,39,,2026-02-24T01:29:00,import,
+Mars,7,263,9,Planète Mère,true,true,Alpha,,,"2026-02-24T01:29:00Z",import,SGZ
+LordOfGoonerZ,1,191,5,Colonie,true,true,Lune,,,2026-02-24T01:29:00+00:00,helper,DP</pre>
       </details>
 
       <details class="mt-12">
@@ -101,7 +103,7 @@ LordOfGoonerZ,1,191,5,Colonie,true,true,Lune,,</pre>
         <div class="mt-12 muted fs-13">
           <div>• Spaltennamen können auch <span class="code-inline">name/g/s/pos/planet</span> heißen.</div>
           <div>• Leere Slots werden ignoriert.</div>
-          <div>• Ungültige Koordinaten (≤0) werden übersprungen.</div>
+          <div>• Ungültige Koordinaten (Galaxy/System ≤0 oder Position außerhalb 1–30) werden übersprungen.</div>
           <div>• Zeilen mit fehlerhaften Werten werden übersprungen, der Rest läuft weiter.</div>
         </div>
       </details>
