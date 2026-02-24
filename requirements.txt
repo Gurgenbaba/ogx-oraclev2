@@ -4,6 +4,7 @@ jinja2
 python-multipart
 sqlalchemy[asyncio]
 aiosqlite
+asyncpg
 pydantic>=2
 pydantic-settings>=2
 passlib[bcrypt]

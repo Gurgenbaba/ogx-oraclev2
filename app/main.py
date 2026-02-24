@@ -6,7 +6,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, Tuple, Any
 from collections import defaultdict
-
+from app.db import engine
+from app.models import Base
 
 import csv
 import io
@@ -273,6 +274,11 @@ async def readyz():
         return JSONResponse({"ok": False, "error": "db_unreachable", "detail": str(e)}, status_code=503)
 
 
+@app.on_event("startup")
+async def startup():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+        
 # ---------------------------------------------------------------------------
 # AUTH API (JWT)
 # ---------------------------------------------------------------------------

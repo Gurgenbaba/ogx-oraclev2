@@ -54,6 +54,8 @@ def _normalize_db_url(raw: str | None) -> str:
 
 
 DATABASE_URL = _normalize_db_url(settings.database_url)
+if settings.env == "prod" and DATABASE_URL.startswith("sqlite"):
+    raise RuntimeError("SQLite is not allowed in production. Configure Railway Postgres.")
 IS_SQLITE = DATABASE_URL.startswith("sqlite+aiosqlite://")
 IS_POSTGRES = DATABASE_URL.startswith("postgresql+asyncpg://")
 

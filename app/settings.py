@@ -26,6 +26,7 @@ class Settings(BaseSettings):
         env_prefix="OGX_",
         env_file=".env",
         extra="ignore",
+        case_sensitive=False,
     )
 
     # ------------------------------------------------------------
@@ -38,9 +39,12 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------
     # Database
     # ------------------------------------------------------------
-    # For Railway/Render set: OGX_DATABASE_URL=postgres://...
-    # (db.py will normalize to postgresql+asyncpg://...)
-    database_url: Optional[str] = Field(default=None, repr=False)
+    # Accept both OGX_DATABASE_URL and standard DATABASE_URL (Railway)
+    database_url: Optional[str] = Field(
+        default=None,
+        validation_alias="DATABASE_URL",
+        repr=False,
+    )
 
     # ------------------------------------------------------------
     # Secrets (NEVER commit)
@@ -134,6 +138,8 @@ class Settings(BaseSettings):
 
         # --- PROD hard requirements ---
         if self.env == "prod":
+            if not self.database_url:
+                raise ValueError("DATABASE_URL is required in prod (Railway Postgres missing)")
             # force secure defaults for old ingest gate (until collector is fully JWT)
             self.ingest_require_key = True
 
