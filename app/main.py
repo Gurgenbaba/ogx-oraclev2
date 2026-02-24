@@ -5,6 +5,8 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, Tuple, Any
+from collections import defaultdict
+
 
 import csv
 import io
@@ -440,14 +442,17 @@ async def player_page(request: Request, name: str):
 async def import_ui(request: Request):
     qp = request.query_params
     summary = None
-    if "imported" in qp or "updated" in qp or "players" in qp:
+
+    # show summary if at least one value is present
+    if any(k in qp for k in ("imported", "updated", "players", "skipped")):
         summary = {
             "imported": qp.get("imported", "0"),
             "updated": qp.get("updated", "0"),
             "players": qp.get("players", "0"),
+            "skipped": qp.get("skipped", "0"),
         }
-    return _template(request, "import.html", {"summary": summary, "active_nav": "import"})
 
+    return _template(request, "import.html", {"summary": summary, "active_nav": "import"})
 
 @app.get("/galaxy", response_class=HTMLResponse)
 async def galaxy_overview(request: Request, g: int = 0):
@@ -722,23 +727,26 @@ async def import_csv(request: Request, file: UploadFile = File(...)):
     rows_seen = 0
     rows_skipped = 0
 
-    def _parse_dt(s: Any) -> Optional[datetime]:
+    # (g,s) -> set(positions)
+    gs_planets = defaultdict(set)
+    # (g,s) -> newest naive UTC timestamp
+    gs_last_seen: dict[tuple[int, int], datetime] = {}
+
+    def _parse_dt(v: Any) -> Optional[datetime]:
         """
-        Accepts ISO timestamps like:
+        Accept ISO timestamps like:
         - 2026-02-23T02:26:57.524665
         - 2026-02-23T02:26:57.524665Z
         - 2026-02-23T02:26:57+00:00
-        Stores naive UTC (tz stripped) like the rest of the app.
+        Returns naive UTC datetime (tz stripped), matching app storage.
         """
         try:
-            val = (str(s or "")).strip()
-            if not val:
+            s = (str(v or "")).strip()
+            if not s:
                 return None
-            # tolerate trailing Z
-            if val.endswith("Z"):
-                val = val[:-1] + "+00:00"
-            dt = datetime.fromisoformat(val)
-            # strip tz -> naive (UTC expected)
+            if s.endswith("Z"):
+                s = s[:-1] + "+00:00"
+            dt = datetime.fromisoformat(s)
             if dt.tzinfo is not None:
                 dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
             return dt
@@ -751,26 +759,43 @@ async def import_csv(request: Request, file: UploadFile = File(...)):
             if rows_seen > settings.max_csv_rows:
                 return PlainTextResponse("too many rows", status_code=413)
 
-            # Normalize like ingest (strip status suffixes etc.)
+            # Normalize player like ingest
             player_name = _norm_player_name(row.get("player") or row.get("name") or "")[:64]
             if not player_name:
                 rows_skipped += 1
                 continue
 
-            galaxy = int((row.get("galaxy") or row.get("g") or "0").strip() or 0)
-            system = int((row.get("system") or row.get("s") or "0").strip() or 0)
-            position = int((row.get("position") or row.get("pos") or "0").strip() or 0)
+            # coords
+            try:
+                galaxy = int(str(row.get("galaxy") or row.get("g") or "0").strip() or 0)
+                system = int(str(row.get("system") or row.get("s") or "0").strip() or 0)
+                position = int(str(row.get("position") or row.get("pos") or "0").strip() or 0)
+            except Exception:
+                rows_skipped += 1
+                continue
 
-            # stricter validation (OGX-like: 1..30)
+            # strict validation
             if galaxy <= 0 or system <= 0 or position < 1 or position > 30:
                 rows_skipped += 1
                 continue
 
+            # Track GalaxyScan from CSV
+            gs_key = (galaxy, system)
+            gs_planets[gs_key].add(position)
+
+            seen_from_csv = _parse_dt(row.get("last_seen_at"))
+            if seen_from_csv is not None:
+                prev = gs_last_seen.get(gs_key)
+                if prev is None or seen_from_csv > prev:
+                    gs_last_seen[gs_key] = seen_from_csv
+
+            # fields
             planet_name = (row.get("planet_name") or row.get("planet") or "Colonie").strip()
             planet_name = (planet_name[: settings.max_field_len] or "Colonie")
 
             is_main = _to_bool(row.get("is_main"))
             hint = _to_int_or_none(row.get("travel_hint_minutes"))
+
             note = (row.get("note") or "").strip()
             note = (note[: settings.max_field_len] or None)
 
@@ -778,12 +803,11 @@ async def import_csv(request: Request, file: UploadFile = File(...)):
             moon_name = (row.get("moon_name") or "").strip()
             moon_name = (moon_name[: settings.max_field_len] or None)
 
-            # IMPORT ally (your export already includes it)
             ally = (row.get("ally") or "").strip()
             ally = (ally[:32] or None)
 
-            # Keep CSV timestamps if present; fallback to now
-            seen = _parse_dt(row.get("last_seen_at")) or _utcnow_naive()
+            # Keep timestamp if present, else now
+            seen = seen_from_csv or _utcnow_naive()
 
             p, created = await get_or_create_player(db, player_name)
             if created:
@@ -833,10 +857,22 @@ async def import_csv(request: Request, file: UploadFile = File(...)):
                     await _ensure_single_main(db, p.id, c.id)
                 imported += 1
 
+        # Build GalaxyScan entries from CSV (so /galaxy works immediately)
+        fallback_now = _utcnow_naive()
+        for (g, s), pos_set in gs_planets.items():
+            scanned_at = gs_last_seen.get((g, s)) or fallback_now
+            await _upsert_galaxy_scan(
+                db,
+                galaxy=g,
+                system=s,
+                scanned_at=scanned_at,
+                planets_found=len(pos_set),
+            )
+
         await db.commit()
 
     return RedirectResponse(
-        url=f"/import-ui?imported={imported}&updated={updated}&players={created_players}",
+        url=f"/import-ui?imported={imported}&updated={updated}&players={created_players}&skipped={rows_skipped}",
         status_code=303,
     )
 
