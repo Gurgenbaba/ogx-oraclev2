@@ -720,6 +720,30 @@ async def import_csv(request: Request, file: UploadFile = File(...)):
     updated = 0
     created_players = 0
     rows_seen = 0
+    rows_skipped = 0
+
+    def _parse_dt(s: Any) -> Optional[datetime]:
+        """
+        Accepts ISO timestamps like:
+        - 2026-02-23T02:26:57.524665
+        - 2026-02-23T02:26:57.524665Z
+        - 2026-02-23T02:26:57+00:00
+        Stores naive UTC (tz stripped) like the rest of the app.
+        """
+        try:
+            val = (str(s or "")).strip()
+            if not val:
+                return None
+            # tolerate trailing Z
+            if val.endswith("Z"):
+                val = val[:-1] + "+00:00"
+            dt = datetime.fromisoformat(val)
+            # strip tz -> naive (UTC expected)
+            if dt.tzinfo is not None:
+                dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+            return dt
+        except Exception:
+            return None
 
     async with AsyncSessionLocal() as db:
         for row in reader:
@@ -727,25 +751,41 @@ async def import_csv(request: Request, file: UploadFile = File(...)):
             if rows_seen > settings.max_csv_rows:
                 return PlainTextResponse("too many rows", status_code=413)
 
-            player_name = _norm_name(row.get("player") or row.get("name") or "")
+            # Normalize like ingest (strip status suffixes etc.)
+            player_name = _norm_player_name(row.get("player") or row.get("name") or "")[:64]
             if not player_name:
+                rows_skipped += 1
                 continue
 
             galaxy = int((row.get("galaxy") or row.get("g") or "0").strip() or 0)
             system = int((row.get("system") or row.get("s") or "0").strip() or 0)
             position = int((row.get("position") or row.get("pos") or "0").strip() or 0)
-            if galaxy <= 0 or system <= 0 or position <= 0:
+
+            # stricter validation (OGX-like: 1..30)
+            if galaxy <= 0 or system <= 0 or position < 1 or position > 30:
+                rows_skipped += 1
                 continue
 
-            planet_name = (row.get("planet_name") or row.get("planet") or "Colonie").strip()[: settings.max_field_len] or "Colonie"
+            planet_name = (row.get("planet_name") or row.get("planet") or "Colonie").strip()
+            planet_name = (planet_name[: settings.max_field_len] or "Colonie")
+
             is_main = _to_bool(row.get("is_main"))
             hint = _to_int_or_none(row.get("travel_hint_minutes"))
-            note = (row.get("note") or "").strip()[: settings.max_field_len] or None
+            note = (row.get("note") or "").strip()
+            note = (note[: settings.max_field_len] or None)
 
             has_moon = _to_bool(row.get("has_moon"))
-            moon_name = (row.get("moon_name") or "").strip()[: settings.max_field_len] or None
+            moon_name = (row.get("moon_name") or "").strip()
+            moon_name = (moon_name[: settings.max_field_len] or None)
 
-            p, created = await get_or_create_player(db, player_name[:64])
+            # IMPORT ally (your export already includes it)
+            ally = (row.get("ally") or "").strip()
+            ally = (ally[:32] or None)
+
+            # Keep CSV timestamps if present; fallback to now
+            seen = _parse_dt(row.get("last_seen_at")) or _utcnow_naive()
+
+            p, created = await get_or_create_player(db, player_name)
             if created:
                 created_players += 1
 
@@ -757,17 +797,17 @@ async def import_csv(request: Request, file: UploadFile = File(...)):
             )
             existing = (await db.execute(stmt)).scalar_one_or_none()
 
-            now = _utcnow_naive()
-
             if existing:
                 existing.planet_name = planet_name
-                existing.is_main = is_main
+                existing.is_main = bool(is_main)
+                existing.ally = ally
                 existing.travel_hint_minutes = hint
                 existing.note = note
                 existing.has_moon = bool(has_moon)
                 existing.moon_name = moon_name if has_moon else None
-                existing.last_seen_at = now
+                existing.last_seen_at = seen
                 existing.source = SRC_IMPORT
+
                 if existing.is_main:
                     await _ensure_single_main(db, p.id, existing.id)
                 updated += 1
@@ -778,12 +818,13 @@ async def import_csv(request: Request, file: UploadFile = File(...)):
                     system=system,
                     position=position,
                     planet_name=planet_name,
-                    is_main=is_main,
+                    is_main=bool(is_main),
+                    ally=ally,
                     has_moon=bool(has_moon),
                     moon_name=moon_name if has_moon else None,
                     travel_hint_minutes=hint,
                     note=note,
-                    last_seen_at=now,
+                    last_seen_at=seen,
                     source=SRC_IMPORT,
                 )
                 db.add(c)
@@ -798,7 +839,6 @@ async def import_csv(request: Request, file: UploadFile = File(...)):
         url=f"/import-ui?imported={imported}&updated={updated}&players={created_players}",
         status_code=303,
     )
-
 
 @app.get("/export.csv")
 async def export_csv():
