@@ -49,8 +49,8 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(32), unique=True, index=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(100), nullable=False)
 
-    is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("0"))
-    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=text("1"))
+    is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=text("true"))
 
     token_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
 
@@ -109,9 +109,8 @@ class Colony(Base):
 
     planet_name: Mapped[str] = mapped_column(String(128), nullable=False, default="Colonie", server_default=text("'Colonie'"))
 
-    is_main: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("0"))
-
-    has_moon: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("0"))
+    is_main: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+    has_moon: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
     moon_name: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
 
     ally: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
@@ -137,7 +136,7 @@ class Colony(Base):
         CheckConstraint("system >= 1 AND system <= 1000", name="ck_colonies_system"),
         CheckConstraint("position >= 1 AND position <= 30", name="ck_colonies_position"),
 
-        CheckConstraint("(has_moon = 1) OR (moon_name IS NULL)", name="ck_colonies_moon_consistency"),
+        CheckConstraint("(NOT has_moon) OR (moon_name IS NOT NULL)", name="ck_colonies_moon_consistency"),
 
         CheckConstraint(
             "travel_hint_minutes IS NULL OR (travel_hint_minutes >= 0 AND travel_hint_minutes <= 100000)",
