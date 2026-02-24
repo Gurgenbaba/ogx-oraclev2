@@ -10,6 +10,7 @@
 // @grant        GM_setValue
 // @connect      127.0.0.1
 // @connect      localhost
+// @connect      ogx-oraclev2-production.up.railway.app
 // ==/UserScript==
 
 (function () {
