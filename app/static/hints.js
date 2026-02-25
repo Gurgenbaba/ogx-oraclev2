@@ -48,8 +48,8 @@
   ];
 
   const FINAL_MSG =
-    "Galaxy lädt gerade viele Daten. Bei vielen Systemen kann das kurz dauern — das ist normal. " +
-    "Tipp: nutze den Galaxie-Filter (1–9) oder öffne erst Details, nachdem die Liste geladen hat.";
+    "Galaxy is loading a large dataset. With many systems this can take a moment — that's normal. " +
+    "Tip: use the galaxy filter (1–9) or open player details after the list has fully loaded.";
 
   // ── Typewriter helper ─────────────────────────────────────────────────────
   function typeWriter(el, text, speed, onDone) {
@@ -101,12 +101,12 @@
 
     const btnOk = ce("button", "btn btn-sm");
     btnOk.type = "button";
-    btnOk.textContent = "Verstanden";
+    btnOk.textContent = "Got it";
     btnOk.addEventListener("click", () => wrap.remove());
 
     const btnHide = ce("button", "btn btn-sm ghost");
     btnHide.type = "button";
-    btnHide.textContent = "Nicht mehr anzeigen";
+    btnHide.textContent = "Don't show again";
     btnHide.addEventListener("click", () => { setDismissed(); wrap.remove(); });
 
     actions.appendChild(btnOk);
