@@ -1034,8 +1034,8 @@ details > summary::-webkit-details-marker {
    ============================================================ */
 .oracle-buddy{
   position: fixed;
-  left: 18px;
-  top: 92px;
+  right: 18px;
+  bottom: 24px;
   z-index: 9999;
   display: flex;
   gap: 12px;
@@ -1184,8 +1184,8 @@ details > summary::-webkit-details-marker {
    ============================================================ */
 .oracle-buddy{
   position: fixed;
-  left: 18px;
-  top: 92px;
+  right: 18px;
+  bottom: 24px;
   z-index: 9999;
   display: flex;
   gap: 12px;
