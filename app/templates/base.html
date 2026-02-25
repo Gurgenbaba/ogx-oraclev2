@@ -1,6 +1,6 @@
 <!-- app/templates/base.html -->
 <!doctype html>
-<html lang="en">
+<html lang="de">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -16,20 +16,20 @@
 </head>
 
 <body>
-  <a class="skip-link" href="#main">Skip to content</a>
+  <a class="skip-link" href="#main">Zum Inhalt springen</a>
 
   <header class="topbar">
     <div class="wrap topbar-inner">
-      <a class="brand" href="/" aria-label="OGX Oracle Home">
+      <a class="brand" href="/" aria-label="OGX Oracle Startseite">
         <span class="brand-mark">OGX</span><span class="brand-rest"> Oracle</span>
       </a>
 
-      <nav class="nav" aria-label="Main navigation">
+      <nav class="nav" aria-label="Hauptnavigation">
         <a
           href="/"
           class="{% if active_nav == 'search' %}active{% endif %}"
           {% if active_nav == 'search' %}aria-current="page"{% endif %}
-        >Search</a>
+        >Suche</a>
 
         <a
           href="/galaxy"
@@ -44,11 +44,12 @@
         >Import</a>
 
         <a href="/export.csv">Export</a>
+        <a href="https://ogx-expedition-production.up.railway.app" target="_blank" class="muted" style="border-color:rgba(192,132,252,.25);color:#c084fc;">→ Expedition</a>
       </nav>
 
       <!-- AUTH STATUS (Topbar) -->
       <div class="authbox">
-        <span id="auth-status" class="muted fs-13" aria-live="polite">Not logged in</span>
+        <span id="auth-status" class="muted fs-13" aria-live="polite">Nicht eingeloggt</span>
         <button id="auth-open" class="btn btn-sm" type="button">Login</button>
         <button id="auth-logout" class="btn btn-sm ghost" type="button" style="display:none;">Logout</button>
       </div>
@@ -63,9 +64,9 @@
       <div class="auth-panel__head">
         <div>
           <div class="auth-panel__title" id="auth-title">Account</div>
-          <div class="muted fs-12" id="auth-hint">Login required for writing (Import / Add / Edit / Delete).</div>
+          <div class="muted fs-12" id="auth-hint">Login nötig für Schreiben (Import / Add / Edit / Delete).</div>
         </div>
-        <button class="btn btn-sm ghost" type="button" data-auth-close aria-label="Close">✕</button>
+        <button class="btn btn-sm ghost" type="button" data-auth-close aria-label="Schließen">✕</button>
       </div>
 
       <div id="auth-error" class="auth-error" style="display:none;"></div>
@@ -81,7 +82,7 @@
             </label>
 
             <label class="field mt-10">
-              <div class="field-label">Password</div>
+              <div class="field-label">Passwort</div>
               <input name="password" type="password" autocomplete="current-password" required />
             </label>
 
@@ -91,7 +92,7 @@
 
         <!-- REGISTER -->
         <section class="auth-card">
-          <div class="muted fs-13">Register</div>
+          <div class="muted fs-13">Registrierung</div>
           <form id="auth-register-form" class="mt-10">
             <label class="field">
               <div class="field-label">Username</div>
@@ -99,15 +100,15 @@
             </label>
 
             <label class="field mt-10">
-              <div class="field-label">Password</div>
+              <div class="field-label">Passwort</div>
               <input name="password" type="password" autocomplete="new-password" required />
             </label>
 
             <div class="muted fs-12 mt-8">
-              Password min. {{ settings.password_min_len if settings else 10 }} characters (policy in settings).
+              Passwort min. {{ settings.password_min_len if settings else 10 }} Zeichen (Policy in Settings).
             </div>
 
-            <button class="btn ghost mt-12" type="submit">Create account</button>
+            <button class="btn ghost mt-12" type="submit">Account erstellen</button>
           </form>
         </section>
       </div>
@@ -116,13 +117,13 @@
       <div id="auth-token-panel" class="auth-token" style="display:none;">
         <div class="row between wrap-flex gap-12">
           <div class="row gap-10 wrap-flex">
-            <div id="auth-token-badge" class="pill fs-11">✅ Success</div>
+            <div id="auth-token-badge" class="pill fs-11">✅ Erfolg</div>
             <div id="auth-token-title" class="muted fs-13">Token</div>
           </div>
           <div class="row gap-8 wrap-flex">
-            <button id="auth-token-toggle" class="btn btn-sm ghost" type="button">Show</button>
-            <button id="auth-token-copy" class="btn btn-sm" type="button" disabled>Copy</button>
-            <button id="auth-token-hide" class="btn btn-sm ghost" type="button">Close</button>
+            <button id="auth-token-toggle" class="btn btn-sm ghost" type="button">Anzeigen</button>
+            <button id="auth-token-copy" class="btn btn-sm" type="button" disabled>Kopieren</button>
+            <button id="auth-token-hide" class="btn btn-sm ghost" type="button">Schließen</button>
           </div>
         </div>
 
@@ -130,7 +131,7 @@
           <div class="muted fs-12">Bearer Token:</div>
           <textarea id="auth-token" class="auth-token__ta" readonly spellcheck="false"></textarea>
           <div class="row between wrap-flex gap-10 mt-8">
-            <div id="auth-token-copied" class="muted fs-12" style="display:none;">Copied ✅</div>
+            <div id="auth-token-copied" class="muted fs-12" style="display:none;">Kopiert ✅</div>
             <div class="muted fs-12">Header: <code>Authorization: Bearer &lt;token&gt;</code></div>
           </div>
         </div>
@@ -144,7 +145,7 @@
 
   <footer class="footer wrap">
     <div>Community tool &bull; shared DB &bull; Auth: JWT</div>
-    <div>Tip: Favicon not up to date? &rarr; Ctrl+F5</div>
+    <div>Tipp: Favicon nicht aktuell? &rarr; Strg+F5</div>
   </footer>
 
   <script src="/static/auth.js" defer></script>
