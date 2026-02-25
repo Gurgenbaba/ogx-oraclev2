@@ -45,20 +45,19 @@
       const token = getToken();
       if (!token) {
         openLoginModal();
-        alert("Login erforderlich, um CSV zu importieren.");
+        alert("Login required to import CSV.");
         return;
       }
 
       const fileInput = form.querySelector('input[type="file"]');
       if (!fileInput || !fileInput.files || !fileInput.files.length) {
-        alert("Bitte eine CSV-Datei auswählen.");
+        alert("Please select a CSV file.");
         return;
       }
 
       const csrfToken = getCsrfToken();
       if (!csrfToken) {
-        // Without CSRF token header, the middleware will likely reject unsafe requests.
-        alert("CSRF-Token fehlt. Bitte Seite neu laden und erneut versuchen.");
+        alert("CSRF token missing. Please reload the page and try again.");
         return;
       }
 
@@ -66,7 +65,7 @@
       const originalText = btn ? btn.textContent : "";
       if (btn) {
         btn.disabled = true;
-        btn.textContent = "Wird importiert…";
+        btn.textContent = "Importing…";
       }
 
       try {
@@ -87,7 +86,6 @@
         const response = await doFetch("/import", {
           method: "POST",
           headers: {
-            // ogxFetch will set these too, but we keep explicit for clarity
             "x-csrf-token": csrfToken,
             Authorization: "Bearer " + token,
           },
@@ -96,7 +94,6 @@
         });
 
         if (response.status === 401 || response.status === 403) {
-          // Unauthorized: token expired/invalid OR CSRF issue
           try {
             if (window.ogxAuth && typeof window.ogxAuth.clearToken === "function") {
               window.ogxAuth.clearToken();
@@ -108,9 +105,9 @@
           openLoginModal();
 
           if (response.status === 403) {
-            alert("Zugriff verweigert (403). Falls eingeloggt: Seite neu laden und erneut versuchen.");
+            alert("Access denied (403). If logged in: reload the page and try again.");
           } else {
-            alert("Session abgelaufen. Bitte neu einloggen.");
+            alert("Session expired. Please log in again.");
           }
           return;
         }
@@ -118,13 +115,13 @@
         if (response.ok || response.redirected) {
           window.location.href = response.url || "/import-ui";
         } else if (response.status === 413) {
-          alert("Datei zu groß. Maximale Größe: 2 MB / 25.000 Zeilen.");
+          alert("File too large. Maximum size: 2 MB / 25,000 rows.");
         } else {
-          alert("Import fehlgeschlagen (HTTP " + response.status + "). Bitte erneut versuchen.");
+          alert("Import failed (HTTP " + response.status + "). Please try again.");
         }
       } catch (err) {
         console.error("Import fetch error:", err);
-        alert("Netzwerkfehler beim Import. Bitte erneut versuchen.");
+        alert("Network error during import. Please try again.");
       } finally {
         if (btn) {
           btn.disabled = false;

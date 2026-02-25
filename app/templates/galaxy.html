@@ -6,22 +6,22 @@
   <div class="row between head-row wrap-flex gap-12">
     <div>
       <h1>Galaxy Scanner</h1>
-      <div class="muted mt-4 fs-13">Übersicht der zuletzt gescannten Systeme (Helper → Local).</div>
+      <div class="muted mt-4 fs-13">Overview of recently scanned systems (Helper → Local).</div>
     </div>
 
     <div class="pills">
-      <div class="pill">{{ scans|length }} Systeme gescannt</div>
+      <div class="pill">{{ scans|length }} systems scanned</div>
       <a class="btn btn-sm ghost" href="/export.csv">Export</a>
     </div>
   </div>
 
   <div class="row gap mt-14 wrap-flex" aria-label="Galaxy Filter">
     <a class="btn btn-sm {% if g != 0 %}ghost{% endif %}" href="/galaxy" aria-current="{% if g == 0 %}page{% endif %}">
-      Alle
+      All
     </a>
     {% for gal in galaxies %}
       <a class="btn btn-sm {% if g != gal %}ghost{% endif %}" href="/galaxy?g={{ gal }}" aria-current="{% if g == gal %}page{% endif %}">
-        Galaxie {{ gal }}
+        Galaxy {{ gal }}
       </a>
     {% endfor %}
   </div>
@@ -30,14 +30,14 @@
 <section class="card">
   {% if scans %}
     <div class="table-wrap">
-      <table class="table table-clickable" aria-label="Gescannte Systeme">
+      <table class="table table-clickable" aria-label="Scanned Systems">
         <thead>
           <tr>
-            <th>Galaxie</th>
+            <th>Galaxy</th>
             <th>System</th>
-            <th>Planeten</th>
-            <th>Zuletzt gescannt</th>
-            <th>Alter</th>
+            <th>Planets</th>
+            <th>Last scanned</th>
+            <th>Age</th>
             <th></th>
           </tr>
         </thead>
@@ -58,7 +58,7 @@
             <tr class="tr-click tr-nav"
                 tabindex="0"
                 role="link"
-                aria-label="System {{ s.galaxy }}:{{ s.system }} öffnen"
+                aria-label="Open system {{ s.galaxy }}:{{ s.system }}"
                 data-href="{{ details_url }}">
               <td class="coord">{{ s.galaxy }}</td>
               <td class="coord">{{ s.system }}</td>
@@ -72,7 +72,7 @@
                 {% if age_hours is none %}
                   <span class="pill fs-11">—</span>
                 {% elif age_hours < 1 %}
-                  <span class="pill pill-good fs-11">Frisch</span>
+                  <span class="pill pill-good fs-11">Fresh</span>
                 {% elif age_hours < 24 %}
                   <span class="pill fs-11">{{ age_hours }}h</span>
                 {% elif age_hours < 168 %}
@@ -92,11 +92,11 @@
     </div>
 
     <div class="muted fs-13 mt-12">
-      Tipp: Klick auf eine Zeile oder Enter, um das System zu öffnen.
+      Tip: Click a row or press Enter to open the system.
     </div>
   {% else %}
     <div class="empty-state">
-      Noch keine Systeme gescannt — navigiere im Spiel durch die Galaxy-View.
+      No systems scanned yet — navigate through the Galaxy View in the game.
     </div>
   {% endif %}
 </section>

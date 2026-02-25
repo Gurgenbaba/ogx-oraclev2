@@ -63,7 +63,7 @@
     const token = getToken();
     if (!token) {
       openLoginModal();
-      alert("Login erforderlich, um Änderungen zu speichern.");
+      alert("Login required to save changes.");
       return;
     }
 
@@ -95,7 +95,6 @@
     });
 
     if (resp.status === 401 || resp.status === 403) {
-      // Token invalid/expired/revoked or admin required
       try {
         if (window.ogxAuth && typeof window.ogxAuth.clearToken === "function") {
           window.ogxAuth.clearToken();
@@ -105,12 +104,12 @@
         }
       } catch {}
       openLoginModal();
-      alert("Session ungültig/abgelaufen (oder keine Rechte). Bitte neu einloggen.");
+      alert("Session invalid/expired (or insufficient permissions). Please log in again.");
       return;
     }
 
     if (resp.status === 413) {
-      alert("Request zu groß. Bitte kleinere Eingabe/Datei verwenden.");
+      alert("Request too large. Please use a smaller input/file.");
       return;
     }
 
@@ -121,12 +120,11 @@
     }
 
     if (resp.ok) {
-      // Some endpoints might return OK without redirect
       window.location.reload();
       return;
     }
 
-    alert("Speichern fehlgeschlagen (HTTP " + resp.status + ").");
+    alert("Save failed (HTTP " + resp.status + ").");
   }
 
   function interceptPostForms() {
@@ -141,7 +139,7 @@
         e.preventDefault();
         submitPostFormWithAuth(form).catch((err) => {
           console.error("POST form submit error:", err);
-          alert("Netzwerkfehler beim Speichern. Bitte erneut versuchen.");
+          alert("Network error while saving. Please try again.");
         });
       });
     });

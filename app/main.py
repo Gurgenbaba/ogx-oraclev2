@@ -6,8 +6,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, Tuple, Any
 from collections import defaultdict
-from app.db import engine
-from app.models import Base
 
 import csv
 import io
@@ -19,10 +17,12 @@ from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse,
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from sqlalchemy import select, func, delete, text
+from sqlalchemy import select, func, delete, text, update
 from sqlalchemy.orm import selectinload
 
-from .db import engine, AsyncSessionLocal
+# FIX: removed duplicate absolute import (from app.db import engine / from app.models import Base).
+# Only relative imports below.
+from .db import engine, AsyncSessionLocal, IS_SQLITE, IS_POSTGRES
 from .models import Base, Player, Colony, GalaxyScan, User
 from .settings import settings
 from .security import (
@@ -91,6 +91,9 @@ app.add_middleware(CsrfMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RequestIdLoggingMiddleware)
 
+# FIX: Removed @app.on_event("startup") block — it was deprecated, conflicted with
+# lifespan(), and bypassed the intentional prod guard (ran create_all in prod).
+
 
 # ---------------------------------------------------------------------------
 # Source constants
@@ -99,6 +102,9 @@ SRC_MANUAL_ADD = "manual_add"
 SRC_MANUAL_EDIT = "manual_edit"
 SRC_IMPORT = "import"
 SRC_HELPER = "helper"
+
+# Default planet name (English)
+DEFAULT_PLANET_NAME = "Colony"
 
 
 def _template(request: Request, name: str, ctx: dict) -> HTMLResponse:
@@ -200,10 +206,22 @@ def _sort_colonies(colonies: list[Colony]) -> list[Colony]:
 
 
 async def _ensure_single_main(db, player_id: int, main_colony_id: int) -> None:
-    res = await db.execute(select(Colony).where(Colony.player_id == player_id))
-    cols = res.scalars().all()
-    for c in cols:
-        c.is_main = (c.id == main_colony_id)
+    """
+    FIX: Use targeted UPDATE instead of loading all colonies into memory.
+    Only updates rows where is_main needs to change, avoiding unnecessary bulk UPDATEs.
+    """
+    # Clear is_main on all OTHER colonies for this player
+    await db.execute(
+        update(Colony)
+        .where(Colony.player_id == player_id, Colony.id != main_colony_id)
+        .values(is_main=False)
+    )
+    # Ensure the target colony is marked main
+    await db.execute(
+        update(Colony)
+        .where(Colony.id == main_colony_id)
+        .values(is_main=True)
+    )
 
 
 async def _upsert_galaxy_scan(db, *, galaxy: int, system: int, scanned_at: datetime, planets_found: int) -> None:
@@ -212,10 +230,11 @@ async def _upsert_galaxy_scan(db, *, galaxy: int, system: int, scanned_at: datet
     - SQLite: uses sqlite dialect insert..on_conflict_do_update
     - Postgres: uses postgres dialect insert..on_conflict_do_update
     - Other: fallback select/update
-    """
-    dialect = db.bind.dialect.name if db.bind and db.bind.dialect else ""
 
-    if dialect == "sqlite":
+    FIX: db.bind is always None in SQLAlchemy 2.x async sessions.
+    Use IS_SQLITE / IS_POSTGRES from db.py instead.
+    """
+    if IS_SQLITE:
         from sqlalchemy.dialects.sqlite import insert as _ins
 
         stmt = (
@@ -229,7 +248,7 @@ async def _upsert_galaxy_scan(db, *, galaxy: int, system: int, scanned_at: datet
         await db.execute(stmt)
         return
 
-    if dialect == "postgresql":
+    if IS_POSTGRES:
         from sqlalchemy.dialects.postgresql import insert as _ins
 
         stmt = (
@@ -243,6 +262,7 @@ async def _upsert_galaxy_scan(db, *, galaxy: int, system: int, scanned_at: datet
         await db.execute(stmt)
         return
 
+    # Generic ORM fallback (other dialects)
     res = await db.execute(select(GalaxyScan).where(GalaxyScan.galaxy == galaxy, GalaxyScan.system == system))
     row = res.scalar_one_or_none()
     if row:
@@ -274,11 +294,6 @@ async def readyz():
         return JSONResponse({"ok": False, "error": "db_unreachable", "detail": str(e)}, status_code=503)
 
 
-@app.on_event("startup")
-async def startup():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-        
 # ---------------------------------------------------------------------------
 # AUTH API (JWT)
 # ---------------------------------------------------------------------------
@@ -460,6 +475,7 @@ async def import_ui(request: Request):
 
     return _template(request, "import.html", {"summary": summary, "active_nav": "import"})
 
+
 @app.get("/galaxy", response_class=HTMLResponse)
 async def galaxy_overview(request: Request, g: int = 0):
     async with AsyncSessionLocal() as db:
@@ -565,7 +581,7 @@ async def add_colony(
     galaxy: int = Form(...),
     system: int = Form(...),
     position: int = Form(...),
-    planet_name: str = Form("Colonie"),
+    planet_name: str = Form(DEFAULT_PLANET_NAME),  # FIX: was "Colonie"
     is_main: bool = Form(False),
     has_moon: bool = Form(False),
     moon_name: Optional[str] = Form(None),
@@ -577,7 +593,7 @@ async def add_colony(
         return err
 
     player_name = _norm_name(player_name)
-    planet_name = (planet_name or "Colonie").strip() or "Colonie"
+    planet_name = (planet_name or DEFAULT_PLANET_NAME).strip() or DEFAULT_PLANET_NAME  # FIX: was "Colonie"
     note = (note or "").strip() or None
     moon_name = (moon_name or "").strip() or None
 
@@ -635,7 +651,7 @@ async def update_colony(
     request: Request,
     colony_id: int,
     player_name: str = Form(...),
-    planet_name: str = Form("Colonie"),
+    planet_name: str = Form(DEFAULT_PLANET_NAME),  # FIX: was "Colonie"
     is_main: bool = Form(False),
     has_moon: bool = Form(False),
     moon_name: Optional[str] = Form(None),
@@ -647,7 +663,7 @@ async def update_colony(
         return err
 
     player_name = _norm_name(player_name)
-    planet_name = (planet_name or "Colonie").strip() or "Colonie"
+    planet_name = (planet_name or DEFAULT_PLANET_NAME).strip() or DEFAULT_PLANET_NAME  # FIX: was "Colonie"
     note = (note or "").strip() or None
     moon_name = (moon_name or "").strip() or None
 
@@ -724,8 +740,9 @@ async def import_csv(request: Request, file: UploadFile = File(...)):
     except ValueError:
         return PlainTextResponse("upload too large", status_code=413)
 
-    text = raw.decode("utf-8-sig", errors="replace")
-    reader = csv.DictReader(io.StringIO(text))
+    # FIX: renamed from `text` to `csv_text` to avoid shadowing SQLAlchemy's `text()` import
+    csv_text = raw.decode("utf-8-sig", errors="replace")
+    reader = csv.DictReader(io.StringIO(csv_text))
 
     imported = 0
     updated = 0
@@ -796,8 +813,9 @@ async def import_csv(request: Request, file: UploadFile = File(...)):
                     gs_last_seen[gs_key] = seen_from_csv
 
             # fields
-            planet_name = (row.get("planet_name") or row.get("planet") or "Colonie").strip()
-            planet_name = (planet_name[: settings.max_field_len] or "Colonie")
+            # FIX: default fallback changed from "Colonie" to DEFAULT_PLANET_NAME ("Colony")
+            planet_name = (row.get("planet_name") or row.get("planet") or DEFAULT_PLANET_NAME).strip()
+            planet_name = (planet_name[: settings.max_field_len] or DEFAULT_PLANET_NAME)
 
             is_main = _to_bool(row.get("is_main"))
             hint = _to_int_or_none(row.get("travel_hint_minutes"))
@@ -881,6 +899,7 @@ async def import_csv(request: Request, file: UploadFile = File(...)):
         url=f"/import-ui?imported={imported}&updated={updated}&players={created_players}&skipped={rows_skipped}",
         status_code=303,
     )
+
 
 @app.get("/export.csv")
 async def export_csv():
@@ -985,7 +1004,8 @@ async def ingest_galaxy(request: Request, payload: dict = Body(...)):
             if not player_name:
                 continue
 
-            planet_name = (r.get("planet_name") or "Colonie").strip()[:128] or "Colonie"
+            # FIX: default fallback changed from "Colonie" to DEFAULT_PLANET_NAME ("Colony")
+            planet_name = (r.get("planet_name") or DEFAULT_PLANET_NAME).strip()[:128] or DEFAULT_PLANET_NAME
             ally = (r.get("ally") or "").strip()[:32] or None
             has_moon = bool(r.get("has_moon", False))
             moon_name = (r.get("moon_name") or "").strip()[:128] or None

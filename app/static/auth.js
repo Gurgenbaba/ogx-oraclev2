@@ -61,7 +61,7 @@
   function collapseTokenPanel() {
     const el = tokenEls();
     if (el.wrap) el.wrap.style.display = "none";
-    if (el.btnToggle) el.btnToggle.textContent = "Anzeigen";
+    if (el.btnToggle) el.btnToggle.textContent = "Show";
     if (el.btnCopy) el.btnCopy.disabled = true;
     if (el.copied) el.copied.style.display = "none";
     if (el.ta) el.ta.scrollTop = 0;
@@ -81,9 +81,9 @@
 
     if (el.title) el.title.textContent = title || "Token";
     if (el.badge) {
-      if (mode === "register") el.badge.textContent = "🎉 Registriert";
-      else if (mode === "login") el.badge.textContent = "✅ Eingeloggt";
-      else el.badge.textContent = "✅ Erfolg";
+      if (mode === "register") el.badge.textContent = "🎉 Registered";
+      else if (mode === "login") el.badge.textContent = "✅ Logged in";
+      else el.badge.textContent = "✅ Success";
     }
 
     if (el.ta) {
@@ -107,7 +107,7 @@
 
     // open
     el.wrap.style.display = "";
-    el.btnToggle.textContent = "Verbergen";
+    el.btnToggle.textContent = "Hide";
     if (el.btnCopy) el.btnCopy.disabled = false;
     if (el.ta) el.ta.focus();
   }
@@ -169,7 +169,7 @@
 
     const token = getToken();
     if (!token) {
-      if (status) status.textContent = "Nicht eingeloggt";
+      if (status) status.textContent = "Not logged in";
       if (openBtn) openBtn.style.display = "";
       if (logoutBtn) logoutBtn.style.display = "none";
       return;
@@ -184,12 +184,12 @@
       if (!data || !data.ok) throw new Error("bad");
 
       const label = data.is_admin ? `${data.username} (Admin)` : data.username;
-      if (status) status.textContent = "Eingeloggt: " + label;
+      if (status) status.textContent = "Logged in: " + label;
       if (openBtn) openBtn.style.display = "none";
       if (logoutBtn) logoutBtn.style.display = "";
     } catch (e) {
       clearToken();
-      if (status) status.textContent = "Session abgelaufen – bitte neu einloggen";
+      if (status) status.textContent = "Session expired – please log in again";
       if (openBtn) openBtn.style.display = "";
       if (logoutBtn) logoutBtn.style.display = "none";
     }
@@ -218,11 +218,7 @@
     await refreshStatus();
 
     // token panel (collapsed)
-    showTokenPanel(data.token, "Login erfolgreich – dein JWT", "login");
-
-    // OPTIONAL: auto-open + auto-copy
-    // toggleTokenPanel();
-    // await copyTokenToClipboard();
+    showTokenPanel(data.token, "Login successful – your JWT", "login");
   }
 
   async function register(username, password) {
@@ -245,11 +241,7 @@
     await refreshStatus();
 
     // token panel (collapsed)
-    showTokenPanel(data.token, "Registrierung erfolgreich – dein JWT", "register");
-
-    // OPTIONAL: auto-open + auto-copy
-    // toggleTokenPanel();
-    // await copyTokenToClipboard();
+    showTokenPanel(data.token, "Registration successful – your JWT", "register");
   }
 
   // --------------------------------------------
@@ -313,7 +305,7 @@
         try {
           await login(username, password);
         } catch (err) {
-          setError("Login fehlgeschlagen: " + (err && err.message ? err.message : "unknown"));
+          setError("Login failed: " + (err && err.message ? err.message : "unknown"));
         }
       });
     }
@@ -328,7 +320,7 @@
         try {
           await register(username, password);
         } catch (err) {
-          setError("Registrierung fehlgeschlagen: " + (err && err.message ? err.message : "unknown"));
+          setError("Registration failed: " + (err && err.message ? err.message : "unknown"));
         }
       });
     }

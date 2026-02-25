@@ -39,7 +39,13 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------
     # Database
     # ------------------------------------------------------------
-    # Accept both OGX_DATABASE_URL and standard DATABASE_URL (Railway)
+    # NOTE: This field intentionally uses validation_alias="DATABASE_URL" (no OGX_ prefix).
+    # This means:
+    #   - DATABASE_URL=...        → picked up  ✅  (Railway injects this automatically)
+    #   - OGX_DATABASE_URL=...    → silently ignored ❌  (does NOT override due to alias)
+    # The OGX_ prefix is bypassed here on purpose so Railway's auto-injected
+    # DATABASE_URL works without any extra configuration.
+    # If you set OGX_DATABASE_URL in Railway, it has no effect — set DATABASE_URL instead.
     database_url: Optional[str] = Field(
         default=None,
         validation_alias="DATABASE_URL",
@@ -139,7 +145,10 @@ class Settings(BaseSettings):
         # --- PROD hard requirements ---
         if self.env == "prod":
             if not self.database_url:
-                raise ValueError("DATABASE_URL is required in prod (Railway Postgres missing)")
+                raise ValueError(
+                    "DATABASE_URL is required in prod (Railway Postgres missing). "
+                    "Note: OGX_DATABASE_URL is NOT read due to validation_alias — set DATABASE_URL directly."
+                )
             # force secure defaults for old ingest gate (until collector is fully JWT)
             self.ingest_require_key = True
 

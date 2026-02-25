@@ -107,7 +107,8 @@ class Colony(Base):
     system: Mapped[int] = mapped_column(Integer, nullable=False)
     position: Mapped[int] = mapped_column(Integer, nullable=False)
 
-    planet_name: Mapped[str] = mapped_column(String(128), nullable=False, default="Colonie", server_default=text("'Colonie'"))
+    # FIX: default changed from "Colonie" (French) to "Colony" (English)
+    planet_name: Mapped[str] = mapped_column(String(128), nullable=False, default="Colony", server_default=text("'Colony'"))
 
     is_main: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
     has_moon: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
@@ -136,7 +137,14 @@ class Colony(Base):
         CheckConstraint("system >= 1 AND system <= 1000", name="ck_colonies_system"),
         CheckConstraint("position >= 1 AND position <= 30", name="ck_colonies_position"),
 
-        CheckConstraint("(NOT has_moon) OR (moon_name IS NOT NULL)", name="ck_colonies_moon_consistency"),
+        # FIX: bidirectional moon consistency —
+        # (1) if has_moon=true, moon_name must not be null
+        # (2) if has_moon=false, moon_name must be null
+        # This prevents orphaned moon_name values when has_moon=false.
+        CheckConstraint(
+            "(has_moon AND moon_name IS NOT NULL) OR (NOT has_moon AND moon_name IS NULL)",
+            name="ck_colonies_moon_consistency",
+        ),
 
         CheckConstraint(
             "travel_hint_minutes IS NULL OR (travel_hint_minutes >= 0 AND travel_hint_minutes <= 100000)",

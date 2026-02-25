@@ -23,11 +23,11 @@
   }
 
   function getScanCountFromDom() {
-    // tries to find "XXX Systeme gescannt"
+    // tries to find "XXX systems scanned"
     const candidates = Array.from(document.querySelectorAll(".pill, .muted, .card, header, main"));
     for (const el of candidates) {
       const txt = (el.textContent || "").replace(/\s+/g, " ").trim();
-      const m = txt.match(/(\d+)\s*Systeme\s+gescannt/i);
+      const m = txt.match(/(\d+)\s*systems?\s+scanned/i);
       if (m) return parseInt(m[1], 10);
     }
     return null;
@@ -36,7 +36,7 @@
   function buildBuddy() {
     const wrap = ce("div", "oracle-buddy");
     wrap.setAttribute("role", "dialog");
-    wrap.setAttribute("aria-label", "Oracle Hinweis");
+    wrap.setAttribute("aria-label", "Oracle Hint");
 
     const img = ce("img", "oracle-buddy__img");
     img.src = "/static/oracle.png";
@@ -49,19 +49,19 @@
 
     const msg = ce("div", "oracle-buddy__msg");
     msg.textContent =
-      "Galaxy lädt gerade viele Daten. Bei vielen Systemen/Planeten kann das kurz dauern — das ist normal. " +
-      "Tipp: nutze den Galaxie-Filter (1..9) oder öffne erst Details, nachdem die Liste geladen hat.";
+      "Galaxy is loading a lot of data. With many systems/planets this may take a moment — that's normal. " +
+      "Tip: use the galaxy filter (1..9) or open details only after the list has fully loaded.";
 
     const actions = ce("div", "oracle-buddy__actions");
 
     const btnOk = ce("button", "btn btn-sm");
     btnOk.type = "button";
-    btnOk.textContent = "Verstanden";
+    btnOk.textContent = "Got it";
     btnOk.addEventListener("click", () => wrap.remove());
 
     const btnHide = ce("button", "btn btn-sm ghost");
     btnHide.type = "button";
-    btnHide.textContent = "Nicht mehr anzeigen";
+    btnHide.textContent = "Don't show again";
     btnHide.addEventListener("click", () => { setDismissed(); wrap.remove(); });
 
     actions.appendChild(btnOk);

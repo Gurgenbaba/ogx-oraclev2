@@ -6,7 +6,7 @@
   <div class="row between head-row wrap-flex gap-12">
     <div>
       <h1>OGX Oracle</h1>
-      <div class="muted mt-4 fs-13">Spieler, Allianzen &amp; Kolonie-Daten lokal tracken.</div>
+      <div class="muted mt-4 fs-13">Track players, alliances &amp; colony data locally.</div>
     </div>
 
     <div class="pills">
@@ -18,8 +18,8 @@
 
   <div class="search-card mt-16">
     <div class="search-tabs">
-      <a class="tab {% if tab != 'ally' %}active{% endif %}" href="/">Spieler</a>
-      <a class="tab {% if tab == 'ally' %}active{% endif %}" href="/?tab=ally">Allianz</a>
+      <a class="tab {% if tab != 'ally' %}active{% endif %}" href="/">Players</a>
+      <a class="tab {% if tab == 'ally' %}active{% endif %}" href="/?tab=ally">Alliance</a>
     </div>
 
     {% if tab == 'ally' %}
@@ -30,14 +30,14 @@
             class="input grow"
             name="ally"
             value="{{ ally }}"
-            placeholder="Allianz-Tag… (z.B. CTX, G-K)"
+            placeholder="Alliance tag… (e.g. CTX, G-K)"
             autocomplete="off"
             autofocus
           />
           {% if ally %}
-            <a class="btn ghost" href="/?tab=ally" aria-label="Suche zurücksetzen">×</a>
+            <a class="btn ghost" href="/?tab=ally" aria-label="Reset search">×</a>
           {% endif %}
-          <button class="btn" type="submit">Suchen</button>
+          <button class="btn" type="submit">Search</button>
         </form>
       </div>
     {% else %}
@@ -47,21 +47,21 @@
             class="input grow"
             name="q"
             value="{{ q }}"
-            placeholder="Spielername eingeben…"
+            placeholder="Enter player name…"
             autocomplete="off"
             autofocus
           />
           {% if q %}
-            <a class="btn ghost" href="/" aria-label="Suche zurücksetzen">×</a>
+            <a class="btn ghost" href="/" aria-label="Reset search">×</a>
           {% endif %}
-          <button class="btn" type="submit">Suchen</button>
+          <button class="btn" type="submit">Search</button>
         </form>
       </div>
     {% endif %}
 
     <div class="search-footer">
       <div class="muted fs-13">
-        Tipp: Rechtsklick auf den OGX Oracle Button im Spiel-Menü → API-Key setzen.
+        Tip: Right-click the OGX Oracle button in the game menu → set API key.
       </div>
       {% if tab != 'ally' %}
         <form method="post" action="/player/add" class="row gap create-row">
@@ -69,10 +69,10 @@
           <input
             class="input grow"
             name="name"
-            placeholder="Neuen Spieler anlegen…"
+            placeholder="Create new player…"
             autocomplete="off"
           />
-          <button class="btn ghost" type="submit">Anlegen</button>
+          <button class="btn ghost" type="submit">Create</button>
         </form>
       {% endif %}
     </div>
@@ -81,12 +81,12 @@
 
 <section class="card">
   {% if tab == 'ally' %}
-    {# ── ALLIANZ-TAB ── #}
+    {# ── ALLIANCE TAB ── #}
     {% if ally %}
       {% if players %}
         <div class="row between wrap-flex gap-12">
-          <div class="result-count muted">{{ players|length }} Spieler in Allianz „{{ ally }}"</div>
-          <a class="btn btn-sm ghost" href="/?tab=ally">← Alle Allianzen</a>
+          <div class="result-count muted">{{ players|length }} players in alliance "{{ ally }}"</div>
+          <a class="btn btn-sm ghost" href="/?tab=ally">← All alliances</a>
         </div>
         <div class="grid">
           {% for p in players %}
@@ -94,11 +94,11 @@
           {% endfor %}
         </div>
       {% else %}
-        <div class="empty-state">Keine Spieler mit Ally-Tag „{{ ally }}" gefunden.</div>
+        <div class="empty-state">No players found with ally tag "{{ ally }}".</div>
       {% endif %}
     {% else %}
       {% if alliances %}
-        <div class="result-count muted mb-12">{{ alliances|length }} Allianzen bekannt</div>
+        <div class="result-count muted mb-12">{{ alliances|length }} alliances known</div>
         <div class="grid">
           {% for a in alliances %}
             <a class="tile" href="/?tab=ally&ally={{ a | urlencode }}">{{ a }}</a>
@@ -106,18 +106,18 @@
         </div>
       {% else %}
         <div class="empty-state">
-          Noch keine Allianz-Daten. Scanne Galaxy-Systeme mit dem Collector-Script.
+          No alliance data yet. Scan galaxy systems with the collector script.
         </div>
       {% endif %}
     {% endif %}
 
   {% else %}
-    {# ── SPIELER-TAB ── #}
+    {# ── PLAYER TAB ── #}
     {% if players %}
       <div class="row between wrap-flex gap-12">
-        <div class="result-count muted">{{ players|length }} Treffer</div>
+        <div class="result-count muted">{{ players|length }} results</div>
         <div class="pills">
-          {% if q %}<a class="btn btn-sm ghost" href="/">Filter reset</a>{% endif %}
+          {% if q %}<a class="btn btn-sm ghost" href="/">Reset filter</a>{% endif %}
         </div>
       </div>
       <div class="grid">
@@ -127,7 +127,7 @@
       </div>
     {% else %}
       <div class="empty-state">
-        {% if q %}Keine Treffer für „{{ q }}".{% else %}Noch keine Spieler eingetragen.{% endif %}
+        {% if q %}No results for "{{ q }}".{% else %}No players added yet.{% endif %}
       </div>
     {% endif %}
   {% endif %}

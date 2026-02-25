@@ -6,11 +6,11 @@
   <div class="row between head-row wrap-flex gap-12">
     <div>
       <h1>CSV Import</h1>
-      <div class="muted mt-4 fs-13">Bulk-Import für Spieler &amp; Kolonien (lokale SQLite).</div>
+      <div class="muted mt-4 fs-13">Bulk import for players &amp; colonies (local SQLite).</div>
     </div>
 
     <div class="pills">
-      <a class="btn btn-sm ghost" href="/">Suche</a>
+      <a class="btn btn-sm ghost" href="/">Search</a>
       <a class="btn btn-sm ghost" href="/galaxy">Galaxy</a>
       <a class="btn btn-sm ghost" href="/export.csv">Export</a>
     </div>
@@ -18,19 +18,19 @@
 
   {% if summary %}
     <div class="import-summary mt-16">
-      ✓ Import abgeschlossen —
-      <strong>{{ summary.imported }}</strong> neu &bull;
-      <strong>{{ summary.updated }}</strong> aktualisiert &bull;
-      <strong>{{ summary.players }}</strong> neue Spieler
+      ✓ Import complete —
+      <strong>{{ summary.imported }}</strong> new &bull;
+      <strong>{{ summary.updated }}</strong> updated &bull;
+      <strong>{{ summary.players }}</strong> new players
       {% if summary.skipped and summary.skipped != "0" %}
-        &bull; <strong>{{ summary.skipped }}</strong> übersprungen
+        &bull; <strong>{{ summary.skipped }}</strong> skipped
       {% endif %}
     </div>
   {% endif %}
 
   <div class="import-grid mt-16">
     <div class="import-panel">
-      <div class="muted fs-13">Erwartetes Format</div>
+      <div class="muted fs-13">Expected format</div>
       <div class="mono mt-4">
         <span class="code-inline">
           player, galaxy, system, position, planet_name, is_main, has_moon, moon_name, travel_hint_minutes, note, last_seen_at, source, ally
@@ -41,30 +41,30 @@
         <div class="step">
           <div class="step-dot">1</div>
           <div>
-            <div class="step-title">CSV auswählen</div>
-            <div class="muted fs-13">UTF-8 wird empfohlen. BOM ist ok (utf-8-sig wird akzeptiert).</div>
+            <div class="step-title">Select CSV</div>
+            <div class="muted fs-13">UTF-8 recommended. BOM is ok (utf-8-sig accepted).</div>
           </div>
         </div>
         <div class="step">
           <div class="step-dot">2</div>
           <div>
-            <div class="step-title">Import startet</div>
-            <div class="muted fs-13">Duplikate werden erkannt (Player + Koordinaten) und aktualisiert.</div>
+            <div class="step-title">Import starts</div>
+            <div class="muted fs-13">Duplicates are detected (Player + coordinates) and updated.</div>
           </div>
         </div>
         <div class="step">
           <div class="step-dot">3</div>
           <div>
-            <div class="step-title">Ergebnis-Übersicht</div>
-            <div class="muted fs-13">Du wirst zurück zur Import-Seite mit Summary geleitet.</div>
+            <div class="step-title">Result summary</div>
+            <div class="muted fs-13">You will be redirected back to the import page with a summary.</div>
           </div>
         </div>
       </div>
 
       <div class="limit-box mt-16">
         <div class="pill fs-11">Limit: 2 MB</div>
-        <div class="pill fs-11">Max: 25.000 Rows</div>
-        <div class="pill fs-11">Feld-Limit: 512 Zeichen</div>
+        <div class="pill fs-11">Max: 25,000 rows</div>
+        <div class="pill fs-11">Field limit: 512 chars</div>
       </div>
     </div>
 
@@ -77,13 +77,13 @@
         <label class="dropzone">
           <input class="dropzone-input" type="file" name="file" accept=".csv" required />
           <div class="dropzone-inner">
-            <div class="dropzone-title">CSV Datei auswählen</div>
-            <div class="muted fs-13">Klick zum Auswählen (Drag &amp; Drop optional je nach Browser).</div>
+            <div class="dropzone-title">Select CSV file</div>
+            <div class="muted fs-13">Click to select (drag &amp; drop optional depending on browser).</div>
           </div>
         </label>
 
         <div class="row between wrap-flex gap-12 mt-14">
-          <button class="btn" type="submit">Import starten</button>
+          <button class="btn" type="submit">Start import</button>
           <a class="btn ghost" href="/export.csv">⬇ Export (Backup)</a>
         </div>
       </form>
@@ -91,20 +91,20 @@
       <hr class="sep" />
 
       <details>
-        <summary class="muted">Beispiel CSV anzeigen</summary>
+        <summary class="muted">Show example CSV</summary>
 <pre class="codeblock">player,galaxy,system,position,planet_name,is_main,has_moon,moon_name,travel_hint_minutes,note,last_seen_at,source,ally
-Mars,7,29,4,Colonie,false,false,,39,,2026-02-24T01:29:00,import,
-Mars,7,263,9,Planète Mère,true,true,Alpha,,,"2026-02-24T01:29:00Z",import,SGZ
-LordOfGoonerZ,1,191,5,Colonie,true,true,Lune,,,2026-02-24T01:29:00+00:00,helper,DP</pre>
+Mars,7,29,4,Colony,false,false,,39,,2026-02-24T01:29:00,import,
+Mars,7,263,9,Home Planet,true,true,Alpha,,,"2026-02-24T01:29:00Z",import,SGZ
+LordOfGoonerZ,1,191,5,Colony,true,true,Moon,,,2026-02-24T01:29:00+00:00,helper,DP</pre>
       </details>
 
       <details class="mt-12">
-        <summary class="muted">Tipps &amp; häufige Fehler</summary>
+        <summary class="muted">Tips &amp; common errors</summary>
         <div class="mt-12 muted fs-13">
-          <div>• Spaltennamen können auch <span class="code-inline">name/g/s/pos/planet</span> heißen.</div>
-          <div>• Leere Slots werden ignoriert.</div>
-          <div>• Ungültige Koordinaten (Galaxy/System ≤0 oder Position außerhalb 1–30) werden übersprungen.</div>
-          <div>• Zeilen mit fehlerhaften Werten werden übersprungen, der Rest läuft weiter.</div>
+          <div>• Column names can also be <span class="code-inline">name/g/s/pos/planet</span>.</div>
+          <div>• Empty slots are ignored.</div>
+          <div>• Invalid coordinates (Galaxy/System ≤0 or position outside 1–30) are skipped.</div>
+          <div>• Rows with invalid values are skipped, the rest continues.</div>
         </div>
       </details>
     </div>
