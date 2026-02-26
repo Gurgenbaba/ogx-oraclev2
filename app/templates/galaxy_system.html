@@ -1,85 +1,61 @@
 {% extends "base.html" %}
 {% set active_nav = "galaxy" %}
 {% block content %}
-
 <section class="card">
   <div class="row between head-row wrap-flex gap-12">
     <div>
       <h1>{{ galaxy }}:{{ system }}</h1>
       <div class="muted mt-4 fs-13">
         {% if scan %}
-          Last scanned: {{ scan.scanned_at.strftime("%d.%m.%Y %H:%M") }}
-          &bull; {{ scan.planets_found }} planets
+          {{ t('system.last_scanned') }} {{ scan.scanned_at.strftime("%d.%m.%Y %H:%M") }}
+          &bull; {{ scan.planets_found }} {{ t('system.planets') }}
         {% else %}
-          Not yet scanned
+          {{ t('system.not_scanned') }}
         {% endif %}
       </div>
     </div>
-
     <div class="pills">
-      <a class="btn btn-sm ghost" href="/galaxy?g={{ galaxy }}">← Galaxy {{ galaxy }}</a>
-      <a class="btn btn-sm ghost" href="/galaxy">All systems</a>
+      <a class="btn btn-sm ghost" href="/galaxy?g={{ galaxy }}">{{ t('system.back', g=galaxy) }}</a>
+      <a class="btn btn-sm ghost" href="/galaxy">{{ t('system.all') }}</a>
     </div>
   </div>
 </section>
 
 <section class="card">
   <div class="row between wrap-flex gap-12">
-    <h2>Occupied positions</h2>
-    <div class="pills">
-      <div class="pill">{{ colonies|length }} colonies</div>
-    </div>
+    <h2>{{ t('system.occupied') }}</h2>
+    <div class="pills"><div class="pill">{{ t('system.colonies', n=colonies|length) }}</div></div>
   </div>
-
   {% if colonies %}
     <div class="table-wrap">
-      <table class="table" aria-label="Colonies in system {{ galaxy }}:{{ system }}">
+      <table class="table">
         <thead>
           <tr>
-            <th>Pos</th>
-            <th>Planet</th>
-            <th>Moon</th>
-            <th>Player</th>
-            <th>Ally</th>
-            <th>Note</th>
-            <th>Last seen</th>
+            <th>{{ t('system.col_pos') }}</th>
+            <th>{{ t('system.col_planet') }}</th>
+            <th>{{ t('system.col_moon') }}</th>
+            <th>{{ t('system.col_player') }}</th>
+            <th>{{ t('system.col_ally') }}</th>
+            <th>{{ t('system.col_note') }}</th>
+            <th>{{ t('system.col_last') }}</th>
           </tr>
         </thead>
-
         <tbody>
           {% for c in colonies %}
             <tr>
               <td class="coord">{{ c.position }}</td>
-
               <td>
                 <span class="planet-name" title="{{ c.planet_name }}">{{ c.planet_name }}</span>
                 {% if c.is_main %}<span class="tag tag-main">MAIN</span>{% endif %}
               </td>
-
               <td>
                 {% if c.has_moon %}
-                  <span class="tag tag-moon">🌙{% if c.moon_name %} {{ c.moon_name }}{% endif %}</span>
-                {% else %}
-                  <span class="dim">—</span>
-                {% endif %}
+                  <span class="tag tag-moon">&#x1f319;{% if c.moon_name %} {{ c.moon_name }}{% endif %}</span>
+                {% else %}<span class="dim">&#x2014;</span>{% endif %}
               </td>
-
-              <td>
-                <a class="player-link" href="/player/{{ c.player.name }}">{{ c.player.name }}</a>
-              </td>
-
-              <td>
-                {% if c.ally %}
-                  <span class="tag">{{ c.ally }}</span>
-                {% else %}
-                  <span class="dim">—</span>
-                {% endif %}
-              </td>
-
-              <td class="muted fs-12" title="{{ c.note if c.note else '' }}">
-                {% if c.note %}{{ c.note }}{% else %}<span class="dim">—</span>{% endif %}
-              </td>
-
+              <td><a class="player-link" href="/player/{{ c.player.name }}">{{ c.player.name }}</a></td>
+              <td>{% if c.ally %}<span class="tag">{{ c.ally }}</span>{% else %}<span class="dim">&#x2014;</span>{% endif %}</td>
+              <td class="muted fs-12" title="{{ c.note if c.note else '' }}">{% if c.note %}{{ c.note }}{% else %}<span class="dim">&#x2014;</span>{% endif %}</td>
               <td class="muted">{{ c.last_seen_at.strftime("%d.%m.%y %H:%M") }}</td>
             </tr>
           {% endfor %}
@@ -87,8 +63,7 @@
       </table>
     </div>
   {% else %}
-    <div class="empty-state">No colonies found for this system.</div>
+    <div class="empty-state">{{ t('system.empty') }}</div>
   {% endif %}
 </section>
-
 {% endblock %}

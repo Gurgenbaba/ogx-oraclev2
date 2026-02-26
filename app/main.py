@@ -25,6 +25,7 @@ from sqlalchemy.orm import selectinload
 from .db import engine, AsyncSessionLocal, IS_SQLITE, IS_POSTGRES
 from .models import Base, Player, Colony, GalaxyScan, User
 from .settings import settings
+from .i18n import get_lang, make_translator, get_translations_js, SUPPORTED, FLAG, LABEL
 from .security import (
     CsrfMiddleware,
     MaxSizeMiddleware,
@@ -109,10 +110,18 @@ DEFAULT_PLANET_NAME = "Colony"
 
 def _template(request: Request, name: str, ctx: dict) -> HTMLResponse:
     """
-    Always provide csrf_token to templates.
+    Always provide csrf_token and i18n to templates.
     """
     csrf_token = getattr(request.state, "csrf_token", None) or request.cookies.get(CSRF_COOKIE) or ""
-    base = {"request": request, "csrf_token": csrf_token}
+    lang = get_lang(request)
+    base = {
+        "request":   request,
+        "csrf_token": csrf_token,
+        "t":         make_translator(lang),
+        "lang":      lang,
+        "i18n_js":   get_translations_js(lang),
+        "settings":  settings,
+    }
     base.update(ctx)
     return templates.TemplateResponse(request, name, base)
 

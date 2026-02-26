@@ -1,118 +1,99 @@
 {% extends "base.html" %}
 {% set active_nav = "import" %}
 {% block content %}
-
 <section class="card">
   <div class="row between head-row wrap-flex gap-12">
     <div>
-      <h1>CSV Import</h1>
-      <div class="muted mt-4 fs-13">Bulk import for players &amp; colonies (local SQLite).</div>
+      <h1>{{ t('import.title') }}</h1>
+      <div class="muted mt-4 fs-13">{{ t('import.subtitle') }}</div>
     </div>
-
     <div class="pills">
-      <a class="btn btn-sm ghost" href="/">Search</a>
-      <a class="btn btn-sm ghost" href="/galaxy">Galaxy</a>
-      <a class="btn btn-sm ghost" href="/export.csv">Export</a>
+      <a class="btn btn-sm ghost" href="/">{{ t('nav.search') }}</a>
+      <a class="btn btn-sm ghost" href="/galaxy">{{ t('nav.galaxy') }}</a>
+      <a class="btn btn-sm ghost" href="/export.csv">{{ t('nav.export') }}</a>
     </div>
   </div>
 
   {% if summary %}
     <div class="import-summary mt-16">
-      ✓ Import complete —
-      <strong>{{ summary.imported }}</strong> new &bull;
-      <strong>{{ summary.updated }}</strong> updated &bull;
-      <strong>{{ summary.players }}</strong> new players
+      {{ t('import.result', new=summary.imported, updated=summary.updated, players=summary.players) }}
       {% if summary.skipped and summary.skipped != "0" %}
-        &bull; <strong>{{ summary.skipped }}</strong> skipped
+        &bull; <strong>{{ summary.skipped }}</strong> {{ t('import.skipped', n=summary.skipped) }}
       {% endif %}
     </div>
   {% endif %}
 
   <div class="import-grid mt-16">
     <div class="import-panel">
-      <div class="muted fs-13">Expected format</div>
+      <div class="muted fs-13">{{ t('import.format') }}</div>
       <div class="mono mt-4">
-        <span class="code-inline">
-          player, galaxy, system, position, planet_name, is_main, has_moon, moon_name, travel_hint_minutes, note, last_seen_at, source, ally
-        </span>
+        <span class="code-inline">player, galaxy, system, position, planet_name, is_main, has_moon, moon_name, travel_hint_minutes, note, last_seen_at, source, ally</span>
       </div>
-
       <div class="import-steps mt-16">
         <div class="step">
           <div class="step-dot">1</div>
           <div>
-            <div class="step-title">Select CSV</div>
-            <div class="muted fs-13">UTF-8 recommended. BOM is ok (utf-8-sig accepted).</div>
+            <div class="step-title">{{ t('import.step1_title') }}</div>
+            <div class="muted fs-13">{{ t('import.step1_desc') }}</div>
           </div>
         </div>
         <div class="step">
           <div class="step-dot">2</div>
           <div>
-            <div class="step-title">Import starts</div>
-            <div class="muted fs-13">Duplicates are detected (Player + coordinates) and updated.</div>
+            <div class="step-title">{{ t('import.step2_title') }}</div>
+            <div class="muted fs-13">{{ t('import.step2_desc') }}</div>
           </div>
         </div>
         <div class="step">
           <div class="step-dot">3</div>
           <div>
-            <div class="step-title">Result summary</div>
-            <div class="muted fs-13">You will be redirected back to the import page with a summary.</div>
+            <div class="step-title">{{ t('import.step3_title') }}</div>
+            <div class="muted fs-13">{{ t('import.step3_desc') }}</div>
           </div>
         </div>
       </div>
-
       <div class="limit-box mt-16">
-        <div class="pill fs-11">Limit: 2 MB</div>
-        <div class="pill fs-11">Max: 25,000 rows</div>
-        <div class="pill fs-11">Field limit: 512 chars</div>
+        <div class="pill fs-11">{{ t('import.limit_size') }}</div>
+        <div class="pill fs-11">{{ t('import.limit_rows') }}</div>
+        <div class="pill fs-11">{{ t('import.limit_field') }}</div>
       </div>
     </div>
 
     <div class="import-panel">
-      <div class="muted fs-13">Upload</div>
-
+      <div class="muted fs-13">{{ t('import.upload') }}</div>
       <form id="import-form" method="post" action="/import" enctype="multipart/form-data" class="mt-12">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-
         <label class="dropzone">
           <input class="dropzone-input" type="file" name="file" accept=".csv" required />
           <div class="dropzone-inner">
-            <div class="dropzone-title">Select CSV file</div>
-            <div class="muted fs-13">Click to select (drag &amp; drop optional depending on browser).</div>
+            <div class="dropzone-title">{{ t('import.select_csv') }}</div>
+            <div class="muted fs-13">{{ t('import.drop_hint') }}</div>
           </div>
         </label>
-
         <div class="row between wrap-flex gap-12 mt-14">
-          <button class="btn" type="submit">Start import</button>
-          <a class="btn ghost" href="/export.csv">⬇ Export (Backup)</a>
+          <button class="btn" type="submit">{{ t('import.start') }}</button>
+          <a class="btn ghost" href="/export.csv">{{ t('import.backup') }}</a>
         </div>
       </form>
-
       <hr class="sep" />
-
       <details>
-        <summary class="muted">Show example CSV</summary>
+        <summary class="muted">{{ t('import.show_example') }}</summary>
 <pre class="codeblock">player,galaxy,system,position,planet_name,is_main,has_moon,moon_name,travel_hint_minutes,note,last_seen_at,source,ally
 Mars,7,29,4,Colony,false,false,,39,,2026-02-24T01:29:00,import,
-Mars,7,263,9,Home Planet,true,true,Alpha,,,"2026-02-24T01:29:00Z",import,SGZ
+Mars,7,263,9,Home Planet,true,true,Alpha,,,&quot;2026-02-24T01:29:00Z&quot;,import,SGZ
 LordOfGoonerZ,1,191,5,Colony,true,true,Moon,,,2026-02-24T01:29:00+00:00,helper,DP</pre>
       </details>
-
       <details class="mt-12">
-        <summary class="muted">Tips &amp; common errors</summary>
+        <summary class="muted">{{ t('import.show_tips') }}</summary>
         <div class="mt-12 muted fs-13">
-          <div>• Column names can also be <span class="code-inline">name/g/s/pos/planet</span>.</div>
-          <div>• Empty slots are ignored.</div>
-          <div>• Invalid coordinates (Galaxy/System ≤0 or position outside 1–30) are skipped.</div>
-          <div>• Rows with invalid values are skipped, the rest continues.</div>
+          <div>&#x2022; {{ t('import.tip1') }}</div>
+          <div>&#x2022; {{ t('import.tip2') }}</div>
+          <div>&#x2022; {{ t('import.tip3') }}</div>
+          <div>&#x2022; {{ t('import.tip4') }}</div>
         </div>
       </details>
     </div>
   </div>
 </section>
-
 {% endblock %}
-
-{% block scripts %}
-<script src="/static/import.js"></script>
-{% endblock %}
+{% block scripts %}<script src="/static/import.js"></script>{% endblock %}
