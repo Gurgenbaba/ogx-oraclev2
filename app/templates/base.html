@@ -39,51 +39,57 @@
   <div id="auth-modal" class="auth-modal" hidden aria-hidden="true">
     <div class="auth-modal__backdrop" data-auth-close></div>
     <aside class="auth-panel" role="dialog" aria-modal="true" aria-labelledby="auth-title" aria-describedby="auth-hint">
+
+      <!-- Logo + Close -->
       <div class="auth-panel__head">
-        <div style="flex:1">
-          <div class="auth-panel__logo">
-            <span class="auth-panel__logo-mark">OGX</span>
-            <span class="auth-panel__logo-rest">Oracle</span>
-          </div>
-          <div class="auth-panel__title" id="auth-title">{{ t('auth.account') }}</div>
-          <div class="muted fs-13" id="auth-hint" style="margin-top:4px">{{ t('auth.hint') }}</div>
+        <div class="auth-panel__logo">
+          <span class="auth-panel__logo-mark">OGX</span>
+          <span class="auth-panel__logo-rest">Oracle</span>
         </div>
-        <button class="btn btn-sm ghost" type="button" data-auth-close aria-label="{{ t('auth.close') }}" style="margin-top:4px">&#x2715;</button>
+        <button class="btn btn-sm ghost" type="button" data-auth-close aria-label="{{ t('auth.close') }}">&#x2715;</button>
       </div>
-      <div id="auth-error" class="auth-error" style="display:none;"></div>
-      <div class="auth-grid">
-        <section class="auth-card">
-          <div class="auth-card__label" style="font-weight:700;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:rgba(0,255,157,.8);">{{ t('auth.login') }}</div>
-          <form id="auth-login-form" class="mt-10">
-            <label class="field">
-              <div class="field-label">{{ t('auth.username') }}</div>
-              <input name="username" autocomplete="username" required maxlength="32" />
-            </label>
-            <label class="field mt-10">
-              <div class="field-label">{{ t('auth.password') }}</div>
-              <input name="password" type="password" autocomplete="current-password" required />
-            </label>
-            <button class="btn mt-12" type="submit">{{ t('auth.login') }}</button>
-          </form>
-        </section>
-        <section class="auth-card">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-            <div style="font-weight:700;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:rgba(255,255,255,.45);">{{ t('auth.register') }}</div>
-          </div>
-          <form id="auth-register-form" class="mt-10">
-            <label class="field">
-              <div class="field-label">{{ t('auth.username') }}</div>
-              <input name="username" autocomplete="username" required maxlength="32" />
-            </label>
-            <label class="field mt-10">
-              <div class="field-label">{{ t('auth.password') }}</div>
-              <input name="password" type="password" autocomplete="new-password" required />
-            </label>
-            <div class="muted fs-12 mt-8">{{ t('auth.pw_policy', n=(settings.password_min_len if settings else 10)) }}</div>
-            <button class="btn ghost mt-12" type="submit">{{ t('auth.create_account') }}</button>
-          </form>
-        </section>
+
+      <!-- Tab switcher -->
+      <div class="auth-tabs" id="auth-tabs">
+        <button class="auth-tab active" data-tab="login" type="button">{{ t('auth.login') }}</button>
+        <button class="auth-tab" data-tab="register" type="button">{{ t('auth.register') }}</button>
       </div>
+
+      <div id="auth-error" class="auth-error" style="display:none;margin-top:14px"></div>
+
+      <!-- Login pane -->
+      <div id="auth-pane-login" class="auth-pane">
+        <p class="muted fs-13" id="auth-hint" style="margin-bottom:20px">{{ t('auth.hint') }}</p>
+        <form id="auth-login-form">
+          <label class="field">
+            <div class="field-label">{{ t('auth.username') }}</div>
+            <input name="username" autocomplete="username" required maxlength="32" />
+          </label>
+          <label class="field" style="margin-top:14px">
+            <div class="field-label">{{ t('auth.password') }}</div>
+            <input name="password" type="password" autocomplete="current-password" required />
+          </label>
+          <button class="btn" type="submit" style="width:100%;margin-top:20px;padding:13px">{{ t('auth.login') }}</button>
+        </form>
+      </div>
+
+      <!-- Register pane -->
+      <div id="auth-pane-register" class="auth-pane" style="display:none">
+        <p class="muted fs-13" style="margin-bottom:20px">{{ t('auth.pw_policy', n=(settings.password_min_len if settings else 10)) }}</p>
+        <form id="auth-register-form">
+          <label class="field">
+            <div class="field-label">{{ t('auth.username') }}</div>
+            <input name="username" autocomplete="username" required maxlength="32" />
+          </label>
+          <label class="field" style="margin-top:14px">
+            <div class="field-label">{{ t('auth.password') }}</div>
+            <input name="password" type="password" autocomplete="new-password" required />
+          </label>
+          <button class="btn ghost" type="submit" style="width:100%;margin-top:20px;padding:13px">{{ t('auth.create_account') }}</button>
+        </form>
+      </div>
+
+      <!-- Token panel (shown after login/register) -->
       <div id="auth-token-panel" class="auth-token" style="display:none;">
         <div class="row between wrap-flex gap-12">
           <div class="row gap-10 wrap-flex">
@@ -105,6 +111,7 @@
           </div>
         </div>
       </div>
+
     </aside>
   </div>
 

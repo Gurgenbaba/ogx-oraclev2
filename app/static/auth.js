@@ -295,6 +295,22 @@
     if (el.btnCopy) el.btnCopy.addEventListener("click", copyTokenToClipboard);
     if (el.btnHide) el.btnHide.addEventListener("click", hideTokenPanel);
 
+    // Tab switching
+    document.querySelectorAll(".auth-tab").forEach(tab => {
+      tab.addEventListener("click", () => {
+        const target = tab.dataset.tab;
+        document.querySelectorAll(".auth-tab").forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        document.querySelectorAll(".auth-pane").forEach(p => p.style.display = "none");
+        const pane = qs("#auth-pane-" + target);
+        if (pane) pane.style.display = "block";
+        setError("");
+        // Focus first input in the active pane
+        const firstInput = pane && pane.querySelector("input");
+        if (firstInput) setTimeout(() => firstInput.focus(), 50);
+      });
+    });
+
     const lf = qs("#auth-login-form");
     if (lf) {
       lf.addEventListener("submit", async (e) => {
