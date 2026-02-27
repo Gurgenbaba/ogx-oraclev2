@@ -1046,11 +1046,11 @@ details > summary::-webkit-details-marker {
   padding: 14px;
   border-radius: 16px;
   background: rgba(5, 10, 20, .78);
-  border: 1px solid rgba(0,255,157,.18);
+  border: 1px solid rgba(91,163,245,.18);
   box-shadow:
-    0 0 0 1px rgba(0,255,157,.08),
+    0 0 0 1px rgba(91,163,245,.08),
     0 18px 60px rgba(0,0,0,.55),
-    0 0 40px rgba(0,255,157,.12);
+    0 0 40px rgba(91,163,245,.12);
   backdrop-filter: blur(10px);
   transition: min-height .3s ease;
 }
@@ -1061,10 +1061,10 @@ details > summary::-webkit-details-marker {
   border-radius: 14px;
   object-fit: contain;
   background: rgba(0,0,0,.22);
-  border: 1px solid rgba(0,255,157,.18);
+  border: 1px solid rgba(91,163,245,.18);
   box-shadow:
-    0 0 0 1px rgba(0,255,157,.08),
-    0 0 22px rgba(0,255,157,.22);
+    0 0 0 1px rgba(91,163,245,.08),
+    0 0 22px rgba(91,163,245,.22);
 }
 
 .oracle-buddy__title{
@@ -1108,17 +1108,18 @@ details > summary::-webkit-details-marker {
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: 500px;
+  width: 460px;
   max-width: calc(100vw - 32px);
+  min-height: 480px;
   max-height: calc(100vh - 40px);
   overflow-y: auto;
   border-radius: 22px;
   background: rgba(5,10,20,.95);
-  border: 1px solid rgba(0,255,157,.18);
+  border: 1px solid rgba(91,163,245,.18);
   box-shadow:
     0 32px 90px rgba(0,0,0,.7),
-    0 0 60px rgba(0,255,157,.10),
-    0 0 0 1px rgba(0,255,157,.06);
+    0 0 60px rgba(91,163,245,.10),
+    0 0 0 1px rgba(91,163,245,.06);
   padding: 28px;
   backdrop-filter: blur(20px);
 }
@@ -1145,7 +1146,7 @@ details > summary::-webkit-details-marker {
 .auth-panel__logo-mark {
   font-size: 28px;
   font-weight: 900;
-  color: #00ff9d;
+  color: #5ba3f5;
   letter-spacing: -.01em;
 }
 .auth-panel__logo-rest {
@@ -1201,9 +1202,9 @@ details > summary::-webkit-details-marker {
 }
 
 .auth-tab.active {
-  background: rgba(0,255,157,.12);
-  color: rgba(0,255,157,.9);
-  border: 1px solid rgba(0,255,157,.18);
+  background: rgba(91,163,245,.12);
+  color: rgba(91,163,245,.9);
+  border: 1px solid rgba(91,163,245,.18);
 }
 
 .auth-pane {
@@ -1222,8 +1223,8 @@ details > summary::-webkit-details-marker {
 }
 .field input:focus {
   outline: none;
-  border-color: rgba(0,255,157,.4);
-  box-shadow: 0 0 0 3px rgba(0,255,157,.08);
+  border-color: rgba(91,163,245,.4);
+  box-shadow: 0 0 0 3px rgba(91,163,245,.08);
 }
 
 .auth-error{
@@ -1239,7 +1240,7 @@ details > summary::-webkit-details-marker {
   margin-top: 12px;
   border-radius: 14px;
   padding: 12px;
-  border: 1px solid rgba(0,255,157,.16);
+  border: 1px solid rgba(91,163,245,.16);
   background: rgba(0,0,0,.18);
 }
 
@@ -1272,11 +1273,11 @@ details > summary::-webkit-details-marker {
   padding: 14px;
   border-radius: 16px;
   background: rgba(5, 10, 20, .78);
-  border: 1px solid rgba(0,255,157,.18);
+  border: 1px solid rgba(91,163,245,.18);
   box-shadow:
-    0 0 0 1px rgba(0,255,157,.08),
+    0 0 0 1px rgba(91,163,245,.08),
     0 18px 60px rgba(0,0,0,.55),
-    0 0 40px rgba(0,255,157,.12);
+    0 0 40px rgba(91,163,245,.12);
   backdrop-filter: blur(10px);
   transition: min-height .3s ease;
 }
@@ -1287,10 +1288,10 @@ details > summary::-webkit-details-marker {
   border-radius: 14px;
   object-fit: contain;
   background: rgba(0,0,0,.22);
-  border: 1px solid rgba(0,255,157,.18);
+  border: 1px solid rgba(91,163,245,.18);
   box-shadow:
-    0 0 0 1px rgba(0,255,157,.08),
-    0 0 22px rgba(0,255,157,.22);
+    0 0 0 1px rgba(91,163,245,.08),
+    0 0 22px rgba(91,163,245,.22);
 }
 
 .oracle-buddy__title{ font-weight: 800; }
