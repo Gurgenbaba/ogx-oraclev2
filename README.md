@@ -1,141 +1,138 @@
 # OGX Oracle (v2) — Galaxy Collector + Web UI
 
-OGX Oracle ist ein privates Tracking-Tool für OGX-Galaxy-Daten (Spieler, Allianzen, Kolonien, Monde).
-Die Daten werden über ein Tampermonkey Userscript direkt aus der Galaxy-Ansicht gesammelt und an den OGX-Oracle-Server gesendet.
+OGX Oracle ist ein privates Tracking-Tool für OGX-Galaxy-Daten
+(Spieler, Allianzen, Kolonien, Monde).
 
-Stack:
+Die Daten werden über ein Tampermonkey-Userscript direkt aus der
+Galaxy-Ansicht gesammelt und an den OGX-Oracle-Server gesendet.
+
+Fokus:
+Nur sichtbare Ingame-Daten.
+Keine versteckten oder automatisierten Spielmechaniken.
+
+------------------------------------------------------------
+
+STACK
+
 - FastAPI
-- SQLite
+- SQLite (Development)
 - Jinja Templates
 - Tampermonkey (GM_xmlhttpRequest)
 
----
+------------------------------------------------------------
 
-## Features
+FEATURES
 
-- 🌌 Auto-Scan: Galaxy öffnen → sichtbare Slots werden automatisch gesendet
-- 🔍 Spieler-Suche: alle Kolonien eines Spielers auf einen Blick
-- 🏰 Allianz-Tracker: Ally → Spieler Zuordnung automatisch befüllt
-- 📡 Ingame UI: Badge + Menü-Button (Rechtsklick = Setup)
-- 💾 Export/Backup: Datensicherung möglich
+- Auto-Scan: Galaxy öffnen → sichtbare Slots werden gesendet
+- Spieler-Suche: alle Kolonien eines Spielers
+- Allianz-Tracker: automatische Zuordnung
+- Ingame UI: Badge + Menü (Rechtsklick = Setup)
+- Export/Backup möglich
 
----
+------------------------------------------------------------
 
-## Live Deployment (Railway)
+LIVE DEPLOYMENT (Railway)
 
 Produktions-URL:
-
 https://ogx-oraclev2-production.up.railway.app
 
-Port intern: 8080
+Hinweis:
+Railway nutzt intern Port 8080.
+Extern wird automatisch HTTPS bereitgestellt.
+Kein :8080 an die URL anhängen.
 
----
+------------------------------------------------------------
 
-## Collector installieren (Tampermonkey)
+COLLECTOR INSTALLIEREN (Tampermonkey)
 
-### 1) Tampermonkey installieren
+1) Tampermonkey installieren
 https://www.tampermonkey.net/
 
-### 2) Userscript hinzufügen
-Tampermonkey → Dashboard → Neues Script → Inhalt von  
-`ogx-oracle-collector.user.js` einfügen → Strg+S
+2) Userscript hinzufügen
+Tampermonkey → Dashboard → Neues Script
+Inhalt von ogx-oracle-collector.user.js einfügen
+Speichern
 
-### 3) WICHTIG: @connect korrekt setzen
+3) WICHTIG: @connect korrekt setzen
 
-Im Userscript Header MUSS stehen:
+Im Userscript Header muss stehen:
 
-```js
-// @grant        GM_xmlhttpRequest
-// @connect      ogx-oraclev2-production.up.railway.app
-```
+// @grant   GM_xmlhttpRequest
+// @connect ogx-oraclev2-production.up.railway.app
 
-Wenn @connect fehlt, blockt Tampermonkey die Requests und das Badge zeigt "Offline?".
+Fehlt @connect, blockt Tampermonkey die Requests.
 
-### 4) Setup im Spiel
+4) Setup im Spiel
 
-Im Spiel unten rechts erscheint das Badge:
-
+Im Spiel unten rechts erscheint:
 ◉ Oracle
 
 Rechtsklick → Setup
 
 Base URL eintragen:
-
 https://ogx-oraclev2-production.up.railway.app
 
 Optional:
-- JWT setzen (preferred)
-- oder API Key setzen
+API Key oder JWT setzen
 
----
+------------------------------------------------------------
 
-## Lokaler Start (optional)
+LOKALER START (optional)
 
-Wenn du lokal statt Railway arbeiten willst:
-
-```powershell
 python -m venv .venv
 .venv\Scripts\python.exe -m pip install fastapi uvicorn sqlalchemy aiosqlite pydantic pydantic-settings python-multipart jinja2
 .venv\Scripts\python.exe -m uvicorn app.main:app --reload
-```
 
-Dann erreichst du die App unter:
-
+App erreichbar unter:
 http://127.0.0.1:8000
 
-Und trägst im Setup ein:
-
+Im Collector Setup dann:
 http://127.0.0.1:8000
 
----
+------------------------------------------------------------
 
-## API Key / Auth (Empfohlen)
+API KEY (EMPFOHLEN FÜR PROD)
 
-Wenn öffentlich deployed, setze in Railway → Variables:
+In Railway → Variables setzen:
 
-OGX_INGEST_API_KEY=dein-key-hier
+OGX_INGEST_API_KEY=DEIN_KEY
 
-Der Collector sendet dann:
-
+Der Collector sendet:
 x-ogx-api-key: <KEY>
 
 Ohne Auth kann theoretisch jeder POST Requests an /ingest senden.
 
----
+------------------------------------------------------------
 
-## Troubleshooting
+TROUBLESHOOTING
 
-Refused to connect … not part of the @connect list  
-→ Railway Domain im Userscript Header ergänzen.
+Refused to connect … not part of the @connect list
+→ Railway Domain im Userscript Header ergänzen
 
-Badge fehlt  
-→ Script aktiv?  
-→ @match passt zu https://uni1.playogx.com/*  
+Badge fehlt
+→ Script aktiv?
+→ @match korrekt?
 → Strg+F5
 
-Badge zeigt 0 Rows  
-→ Galaxy noch nicht vollständig geladen  
-→ kurz warten oder Badge anklicken
+Badge zeigt 401 / 403
+→ Auth prüfen
 
-Badge zeigt 401 oder 403  
-→ Auth setzen (JWT oder API Key)
+Badge zeigt Offline?
+→ Server down oder falsche Base URL
 
-Badge zeigt Offline?  
-→ Server läuft nicht oder falsche Base URL
+------------------------------------------------------------
 
----
-
-## Security Hinweis
+SECURITY HINWEIS
 
 Wenn öffentlich betrieben:
 
-- API Key Pflicht für /ingest/*
+- API Key Pflicht für /ingest
 - Rate Limiting aktivieren
 - Logging einschalten
-- HTTPS erzwingen (Railway Standard)
+- HTTPS erzwingen
 
----
+------------------------------------------------------------
 
-## License
+LICENSE
 
 Private / internal use.
