@@ -40,16 +40,20 @@
     <div class="auth-modal__backdrop" data-auth-close></div>
     <aside class="auth-panel" role="dialog" aria-modal="true" aria-labelledby="auth-title" aria-describedby="auth-hint">
       <div class="auth-panel__head">
-        <div>
+        <div style="flex:1">
+          <div class="auth-panel__logo">
+            <span class="auth-panel__logo-mark">OGX</span>
+            <span class="auth-panel__logo-rest">Oracle</span>
+          </div>
           <div class="auth-panel__title" id="auth-title">{{ t('auth.account') }}</div>
-          <div class="muted fs-12" id="auth-hint">{{ t('auth.hint') }}</div>
+          <div class="muted fs-13" id="auth-hint" style="margin-top:4px">{{ t('auth.hint') }}</div>
         </div>
-        <button class="btn btn-sm ghost" type="button" data-auth-close aria-label="{{ t('auth.close') }}">&#x2715;</button>
+        <button class="btn btn-sm ghost" type="button" data-auth-close aria-label="{{ t('auth.close') }}" style="margin-top:4px">&#x2715;</button>
       </div>
       <div id="auth-error" class="auth-error" style="display:none;"></div>
       <div class="auth-grid">
         <section class="auth-card">
-          <div class="muted fs-13">{{ t('auth.login') }}</div>
+          <div class="auth-card__label" style="font-weight:700;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:rgba(0,255,157,.8);">{{ t('auth.login') }}</div>
           <form id="auth-login-form" class="mt-10">
             <label class="field">
               <div class="field-label">{{ t('auth.username') }}</div>
@@ -63,7 +67,9 @@
           </form>
         </section>
         <section class="auth-card">
-          <div class="muted fs-13">{{ t('auth.register') }}</div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+            <div style="font-weight:700;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:rgba(255,255,255,.45);">{{ t('auth.register') }}</div>
+          </div>
           <form id="auth-register-form" class="mt-10">
             <label class="field">
               <div class="field-label">{{ t('auth.username') }}</div>
