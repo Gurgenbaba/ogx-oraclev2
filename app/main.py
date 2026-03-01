@@ -24,6 +24,13 @@ from sqlalchemy.orm import selectinload
 # Only relative imports below.
 from .db import engine, AsyncSessionLocal, IS_SQLITE, IS_POSTGRES
 from .models import Base, Player, Colony, GalaxyScan, User
+from .prestige import (
+    handle_galaxy_scan as prestige_scan,
+    handle_daily_login as prestige_login,
+    get_prestige_summary,
+    get_leaderboard as prestige_leaderboard,
+    seed_achievements,
+)
 from .settings import settings
 from .i18n import get_lang, make_translator, get_translations_js, SUPPORTED, FLAG, LABEL
 from .security import (
@@ -284,6 +291,31 @@ async def _upsert_galaxy_scan(db, *, galaxy: int, system: int, scanned_at: datet
 # ---------------------------------------------------------------------------
 # Health / Readiness
 # ---------------------------------------------------------------------------
+
+@app.get("/api/prestige")
+async def api_prestige(request: Request):
+    """JSON prestige summary for the current JWT user."""
+    async with AsyncSessionLocal() as db:
+        u, err = await _require_user_for_write(request, db)
+        if err:
+            return JSONResponse({"ok": False, "error": "unauthorized"}, status_code=401)
+        summary = await get_prestige_summary(db, int(u.id))
+        return JSONResponse({"ok": True, **summary})
+
+
+@app.get("/api/leaderboard")
+async def api_leaderboard(request: Request):
+    """Top 20 leaderboard — public."""
+    async with AsyncSessionLocal() as db:
+        board = await prestige_leaderboard(db, limit=20)
+        # Enrich with usernames
+        for entry in board:
+            res = await db.execute(select(User).where(User.id == entry["user_id"]))
+            usr = res.scalar_one_or_none()
+            entry["username"] = usr.username if usr else f"user_{entry['user_id']}"
+        return JSONResponse({"ok": True, "leaderboard": board})
+
+
 @app.get("/healthz")
 async def healthz():
     return {"ok": True}
@@ -342,6 +374,13 @@ async def auth_register(payload: dict = Body(...)):
         await db.refresh(u)
 
         token = create_access_token(user=u)
+        # Award daily login OP
+        try:
+            async with AsyncSessionLocal() as prestige_db:
+                await prestige_login(prestige_db, int(u.id), "oracle")
+                await prestige_db.commit()
+        except Exception:
+            pass
         return {"ok": True, "token": token, "is_admin": u.is_admin, "username": u.username}
 
 
@@ -411,6 +450,11 @@ async def admin_delete_colony(request: Request, colony_id: int):
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
     return _template(request, "login.html", {})
+
+
+@app.get("/login/success", response_class=HTMLResponse)
+async def login_success_page(request: Request):
+    return _template(request, "login_success.html", {})
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -1071,5 +1115,15 @@ async def ingest_galaxy(request: Request, payload: dict = Body(...)):
 
         await _upsert_galaxy_scan(db, galaxy=galaxy, system=system, scanned_at=now, planets_found=len(rows))
         await db.commit()
+
+    # Award OP for new unique system scans
+    if imported > 0:
+        try:
+            ingest_user = await _get_ingest_user(request, db)
+            if ingest_user:
+                await prestige_scan(db, int(ingest_user.id), 1)  # +1 unique system
+                await db.commit()
+        except Exception:
+            pass  # never block ingest on prestige errors
 
     return {"ok": True, "imported": imported, "updated": updated, "players_created": created_players}
