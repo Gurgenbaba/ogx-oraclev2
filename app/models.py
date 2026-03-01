@@ -12,6 +12,11 @@ from sqlalchemy import (
     ForeignKey,
     UniqueConstraint,
     CheckConstraint,
+    BigInteger,
+    Float,
+    Text,
+    JSON,
+    CheckConstraint,
     Index,
     text,
 )
@@ -199,7 +204,7 @@ class OPTransaction(Base):
     reason:     Mapped[str]           = mapped_column(String(64), nullable=False, index=True)
     source_app: Mapped[str]           = mapped_column(String(16), nullable=False)
     ref_id:     Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    created_at: Mapped[datetime]      = mapped_column(DateTime, nullable=False, default=_now, server_default=SERVER_NOW)
+    created_at: Mapped[datetime]      = mapped_column(DateTime, nullable=False, default=utcnow_naive, server_default=SERVER_NOW)
 
     __table_args__ = (
         CheckConstraint("amount != 0", name="ck_op_amount_nonzero"),
@@ -224,7 +229,7 @@ class UserPrestige(Base):
     longest_streak:     Mapped[int]            = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
     streak_milestone_7_claimed:  Mapped[bool]  = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
     streak_milestone_30_claimed: Mapped[bool]  = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
-    updated_at:         Mapped[datetime]       = mapped_column(DateTime, nullable=False, default=_now, server_default=SERVER_NOW)
+    updated_at:         Mapped[datetime]       = mapped_column(DateTime, nullable=False, default=utcnow_naive, server_default=SERVER_NOW)
 
     __table_args__ = (
         CheckConstraint("total_op >= 0", name="ck_prestige_op_nonneg"),
@@ -257,7 +262,7 @@ class UserAchievement(Base):
     id:             Mapped[int]      = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id:        Mapped[int]      = mapped_column(Integer, nullable=False, index=True)
     achievement_id: Mapped[int]      = mapped_column(Integer, nullable=False, index=True)
-    unlocked_at:    Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now, server_default=SERVER_NOW)
+    unlocked_at:    Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utcnow_naive, server_default=SERVER_NOW)
 
     __table_args__ = (
         UniqueConstraint("user_id", "achievement_id", name="uq_user_achievement"),
@@ -274,7 +279,7 @@ class LeaderboardSnapshot(Base):
     user_id:    Mapped[int]      = mapped_column(Integer, nullable=False)
     rank:       Mapped[int]      = mapped_column(Integer, nullable=False)
     op_earned:  Mapped[int]      = mapped_column(Integer, nullable=False, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now, server_default=SERVER_NOW)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utcnow_naive, server_default=SERVER_NOW)
 
     __table_args__ = (
         UniqueConstraint("period", "period_key", "user_id", name="uq_snapshot_period_user"),
