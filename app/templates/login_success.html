@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="{{ lang or 'en' }}">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Token — OGX Oracle</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="/static/app.css" />
+  <link rel="stylesheet" href="/static/login.css" />
+  <link rel="icon" type="image/x-icon" href="/static/favicon.ico?v=2" />
+</head>
+<body>
+
+<div class="login-wrap">
+
+  <div class="login-logo">
+    <a href="/">
+      <div class="brand-row">
+        <span class="ogx">OGX</span>
+        <span class="oracle">Oracle</span>
+      </div>
+      <span class="tagline">// Galaxy Intelligence System</span>
+    </a>
+  </div>
+
+  <div class="login-card">
+
+    <!-- Header -->
+    <div class="success-head">
+      <div class="success-icon">✓</div>
+      <div>
+        <div class="success-title" id="success-title">Eingeloggt</div>
+        <div class="success-sub">Dein Bearer Token — für das Collector-Script benötigt</div>
+      </div>
+    </div>
+
+    <!-- Token box -->
+    <div class="token-box">
+      <div class="token-box-label">Bearer Token</div>
+      <textarea class="token-box-ta" id="token-ta" readonly spellcheck="false"></textarea>
+      <div class="token-box-hint">Header: <span class="token-code">Authorization: Bearer &lt;token&gt;</span></div>
+    </div>
+
+    <!-- Actions -->
+    <div class="success-actions">
+      <button class="login-btn" id="btn-copy" type="button">Token kopieren</button>
+      <a class="login-btn login-btn-ghost" href="/" id="btn-continue">Weiter zum Oracle →</a>
+    </div>
+
+    <div class="success-copied" id="copied-msg">✓ Token kopiert!</div>
+
+    <!-- Collector hint -->
+    <div class="collector-hint">
+      <div class="collector-hint-title">// Collector-Script Setup</div>
+      <div class="collector-hint-text">Rechtsklick auf den OGX Oracle Button im Spiel → Auth: Bearer JWT → Token einfügen</div>
+    </div>
+
+  </div>
+</div>
+
+<script src="/static/login_success.js"></script>
+</body>
+</html>
