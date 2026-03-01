@@ -294,13 +294,20 @@ async def _upsert_galaxy_scan(db, *, galaxy: int, system: int, scanned_at: datet
 
 @app.get("/api/prestige")
 async def api_prestige(request: Request):
-    """JSON prestige summary for the current JWT user."""
+    """JSON prestige summary + leaderboard for the current JWT user."""
     async with AsyncSessionLocal() as db:
         u, err = await _require_user_for_write(request, db)
         if err:
             return JSONResponse({"ok": False, "error": "unauthorized"}, status_code=401)
         summary = await get_prestige_summary(db, int(u.id))
-        return JSONResponse({"ok": True, **summary})
+        board   = await prestige_leaderboard(db, limit=20)
+        # Enrich leaderboard with usernames + is_current_user flag
+        for entry in board:
+            res = await db.execute(select(User).where(User.id == entry["user_id"]))
+            usr = res.scalar_one_or_none()
+            entry["username"]        = usr.username if usr else f"user_{entry['user_id']}"
+            entry["is_current_user"] = (entry["user_id"] == int(u.id))
+        return JSONResponse({"ok": True, **summary, "leaderboard": board})
 
 
 @app.get("/api/leaderboard")
