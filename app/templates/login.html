@@ -34,8 +34,24 @@
     </div>
 
     <div class="login-error" id="auth-error"></div>
-    <div class="login-success" id="auth-success"></div>
 
+    <!-- Token panel — shown after login/register, before redirect -->
+    <div class="token-panel" id="token-panel">
+      <div class="token-panel-head">
+        <span class="token-badge" id="token-badge">✓ Login</span>
+        <span class="token-label">Bearer Token</span>
+        <div class="token-actions">
+          <button class="login-btn" id="token-copy-btn" type="button">{{ t('auth.copy') }}</button>
+          <button class="login-btn login-btn-ghost" id="token-continue-btn" type="button">Weiter →</button>
+        </div>
+      </div>
+      <textarea class="token-ta" id="token-ta" readonly spellcheck="false"></textarea>
+      <div class="token-copied" id="token-copied">{{ t('auth.copied') }}</div>
+      <div class="token-hint">Header: Authorization: Bearer &lt;token&gt;</div>
+      <div class="token-redirect">Weiterleitung in <span id="token-countdown">5</span>s…</div>
+    </div>
+
+    <!-- Login pane -->
     <div id="pane-login">
       <div class="login-field">
         <label for="login-user">{{ t('auth.username') }}</label>
@@ -50,6 +66,7 @@
       <button class="login-btn" id="btn-login" type="button">{{ t('auth.login') }}</button>
     </div>
 
+    <!-- Register pane -->
     <div id="pane-register" hidden>
       <div class="login-policy">// {{ t('auth.pw_policy', n=(settings.password_min_len if settings else 10)) }}</div>
       <div class="login-field">

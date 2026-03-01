@@ -39,3 +39,75 @@ body {
 .login-btn-ghost:hover { background: rgba(0,212,255,.10); border-color: rgba(0,212,255,.36); box-shadow: 0 0 16px rgba(0,212,255,.08); }
 .login-error { display: none; background: rgba(255,50,80,.08); border: 1px solid rgba(255,50,80,.22); border-radius: 10px; padding: 10px 14px; font-size: 13px; color: rgba(255,160,175,.92); margin-top: 14px; font-family: var(--font-mono); }
 .login-success { display: none; background: rgba(0,212,255,.06); border: 1px solid rgba(0,212,255,.20); border-radius: 10px; padding: 10px 14px; font-size: 13px; color: rgba(0,212,255,.85); margin-top: 14px; font-family: var(--font-mono); }
+
+/* ── Token Panel ── */
+.token-panel {
+  display: none;
+  margin-top: 16px;
+  background: rgba(0,212,255,.04);
+  border: 1px solid rgba(0,212,255,.18);
+  border-radius: 14px;
+  padding: 16px;
+}
+.token-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  gap: 10px;
+}
+.token-badge {
+  font-size: 11px;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  color: rgba(0,212,255,.80);
+  background: rgba(0,212,255,.08);
+  border: 1px solid rgba(0,212,255,.20);
+  border-radius: 999px;
+  padding: 3px 10px;
+  letter-spacing: .04em;
+}
+.token-label {
+  font-size: 11px;
+  color: rgba(0,212,255,.35);
+  font-family: var(--font-mono);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  flex: 1;
+  margin-left: 8px;
+}
+.token-actions { display: flex; gap: 6px; }
+.token-ta {
+  width: 100%;
+  min-height: 80px;
+  background: rgba(0,0,0,.35);
+  border: 1px solid rgba(0,212,255,.10);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: rgba(180,230,255,.85);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  resize: none;
+  box-sizing: border-box;
+  margin-top: 8px;
+}
+.token-copied {
+  font-size: 11px;
+  color: rgba(0,212,255,.60);
+  font-family: var(--font-mono);
+  margin-top: 6px;
+  display: none;
+}
+.token-hint {
+  font-size: 11px;
+  color: rgba(0,212,255,.25);
+  font-family: var(--font-mono);
+  margin-top: 6px;
+}
+.token-redirect {
+  font-size: 12px;
+  color: rgba(0,212,255,.40);
+  font-family: var(--font-mono);
+  margin-top: 10px;
+  text-align: center;
+}

@@ -1,8 +1,11 @@
 // login.js — OGX Oracle standalone login page
+// CSP-safe: no inline scripts, no eval
 (function () {
   "use strict";
 
-  const JWT_KEY = "ogx_jwt";
+  var JWT_KEY = "ogx_jwt";
+  var redirectTimer = null;
+  var countdownInterval = null;
 
   function getToken() {
     try { return localStorage.getItem(JWT_KEY) || ""; } catch { return ""; }
@@ -13,11 +16,13 @@
   }
 
   // already logged in → go home
-  var tok = getToken();
-  if (tok) {
-    fetch("/auth/me", { headers: { Authorization: "Bearer " + tok } })
+  var existing = getToken();
+  if (existing) {
+    fetch("/auth/me", { headers: { Authorization: "Bearer " + existing } })
       .then(function (r) { return r.json(); })
-      .then(function (d) { if (d.ok) window.location.href = new URLSearchParams(location.search).get("next") || "/"; })
+      .then(function (d) {
+        if (d.ok) window.location.href = new URLSearchParams(location.search).get("next") || "/";
+      })
       .catch(function () {});
   }
 
@@ -27,27 +32,21 @@
     var el = qs("auth-error");
     el.textContent = msg;
     el.style.display = msg ? "block" : "none";
-    qs("auth-success").style.display = "none";
   }
-  function showSuccess(msg) {
-    var el = qs("auth-success");
-    el.textContent = msg;
-    el.style.display = msg ? "block" : "none";
+  function clearError() {
     qs("auth-error").style.display = "none";
-  }
-  function clearMessages() {
-    qs("auth-error").style.display = "none";
-    qs("auth-success").style.display = "none";
   }
 
-  // Tab switching — use hidden attribute (CSP safe, no style manipulation)
+  // ── Tab switching ──
   function switchTab(tab) {
     var isLogin = tab === "login";
     qs("pane-login").hidden = !isLogin;
     qs("pane-register").hidden = isLogin;
     qs("tab-login").className = "login-tab" + (isLogin ? " active" : "");
     qs("tab-register").className = "login-tab" + (!isLogin ? " active" : "");
-    clearMessages();
+    qs("token-panel").style.display = "none";
+    clearError();
+    clearTimers();
     var f = isLogin ? qs("login-user") : qs("reg-user");
     if (f) setTimeout(function () { f.focus(); }, 30);
   }
@@ -55,6 +54,66 @@
   qs("tab-login").addEventListener("click", function () { switchTab("login"); });
   qs("tab-register").addEventListener("click", function () { switchTab("register"); });
 
+  // ── Token panel ──
+  function clearTimers() {
+    if (redirectTimer) { clearTimeout(redirectTimer); redirectTimer = null; }
+    if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+  }
+
+  function showTokenPanel(token, badgeText, nextUrl) {
+    // hide both panes, show token panel
+    qs("pane-login").hidden = true;
+    qs("pane-register").hidden = true;
+    qs("tab-login").hidden = true;
+    qs("tab-register").hidden = true;
+    clearError();
+
+    qs("token-badge").textContent = badgeText;
+    qs("token-ta").value = token;
+    qs("token-panel").style.display = "block";
+    qs("token-copied").style.display = "none";
+
+    // countdown 5s → redirect
+    var secs = 5;
+    qs("token-countdown").textContent = secs;
+    countdownInterval = setInterval(function () {
+      secs--;
+      if (qs("token-countdown")) qs("token-countdown").textContent = secs;
+      if (secs <= 0) {
+        clearTimers();
+        window.location.href = nextUrl;
+      }
+    }, 1000);
+  }
+
+  // Copy button
+  qs("token-copy-btn").addEventListener("click", function () {
+    var ta = qs("token-ta");
+    var val = ta.value;
+    if (!val) return;
+    navigator.clipboard.writeText(val).then(function () {
+      qs("token-copied").style.display = "block";
+      setTimeout(function () {
+        if (qs("token-copied")) qs("token-copied").style.display = "none";
+      }, 1500);
+    }).catch(function () {
+      // fallback
+      ta.select();
+      document.execCommand("copy");
+      qs("token-copied").style.display = "block";
+      setTimeout(function () {
+        if (qs("token-copied")) qs("token-copied").style.display = "none";
+      }, 1500);
+    });
+  });
+
+  // Manual continue
+  qs("token-continue-btn").addEventListener("click", function () {
+    clearTimers();
+    window.location.href = new URLSearchParams(location.search).get("next") || "/";
+  });
+
+  // ── Error map ──
   var ERROR_MAP = {
     "invalid_login":         "Falscher Benutzername oder Passwort.",
     "user_disabled":         "Account ist deaktiviert.",
@@ -64,6 +123,7 @@
     "registration_disabled": "Registrierung ist deaktiviert.",
   };
 
+  // ── Login ──
   function doLogin() {
     var u = qs("login-user").value.trim().toLowerCase();
     var p = qs("login-pass").value;
@@ -71,7 +131,7 @@
     var btn = qs("btn-login");
     btn.disabled = true;
     btn.textContent = "…";
-    clearMessages();
+    clearError();
     fetch("/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -81,10 +141,8 @@
       .then(function (data) {
         if (data.ok) {
           setToken(data.token);
-          showSuccess("✓ " + (data.username || u) + (data.is_admin ? " (Admin)" : ""));
-          setTimeout(function () {
-            window.location.href = new URLSearchParams(location.search).get("next") || "/";
-          }, 500);
+          var label = "✓ " + (data.username || u) + (data.is_admin ? " (Admin)" : "");
+          showTokenPanel(data.token, label, new URLSearchParams(location.search).get("next") || "/");
         } else {
           showError(ERROR_MAP[data.error] || data.error || "Login fehlgeschlagen.");
           btn.disabled = false;
@@ -98,6 +156,7 @@
       });
   }
 
+  // ── Register ──
   function doRegister() {
     var u = qs("reg-user").value.trim().toLowerCase();
     var p = qs("reg-pass").value;
@@ -105,7 +164,7 @@
     var btn = qs("btn-register");
     btn.disabled = true;
     btn.textContent = "…";
-    clearMessages();
+    clearError();
     fetch("/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -115,10 +174,8 @@
       .then(function (data) {
         if (data.ok) {
           setToken(data.token);
-          showSuccess("✓ Account erstellt — " + (data.username || u));
-          setTimeout(function () {
-            window.location.href = new URLSearchParams(location.search).get("next") || "/";
-          }, 600);
+          var label = "🎉 " + (data.username || u) + (data.is_admin ? " (Admin)" : "");
+          showTokenPanel(data.token, label, new URLSearchParams(location.search).get("next") || "/");
         } else {
           showError(ERROR_MAP[data.error] || data.error || "Registrierung fehlgeschlagen.");
           btn.disabled = false;
@@ -137,6 +194,8 @@
 
   document.addEventListener("keydown", function (e) {
     if (e.key !== "Enter") return;
+    // don't fire while token panel is visible
+    if (qs("token-panel").style.display === "block") return;
     var active = document.activeElement;
     if (active && active.id === "login-user") { qs("login-pass").focus(); return; }
     if (active && active.id === "reg-user")   { qs("reg-pass").focus(); return; }
