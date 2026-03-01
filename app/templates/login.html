@@ -1,5 +1,4 @@
-<!-- app/templates/login.html -->
-<!doctype html>
+<!DOCTYPE html>
 <html lang="{{ lang or 'en' }}">
 <head>
   <meta charset="utf-8" />
@@ -10,154 +9,439 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="/static/app.css" />
   <link rel="icon" type="image/x-icon" href="/static/favicon.ico?v=2" />
+  <style>
+    /* ── Standalone login — no nav, no footer ── */
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      /* Override base background with stronger Oracle glow */
+      background:
+        radial-gradient(900px 500px at 20% -10%, rgba(0,212,255,.10), transparent 60%),
+        radial-gradient(700px 400px at 80% 5%,  rgba(0,150,200,.07), transparent 55%),
+        radial-gradient(800px 600px at 50% 110%, rgba(0,180,255,.06), transparent 55%),
+        linear-gradient(180deg, #030a14 0%, #040c1a 50%, #050e1e 100%);
+    }
+
+    .login-wrap {
+      width: 100%;
+      max-width: 420px;
+    }
+
+    /* ── Logo ── */
+    .login-logo {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .login-logo a {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 6px;
+      text-decoration: none;
+    }
+    .login-logo .ogx {
+      font-family: var(--font-head);
+      font-size: 34px;
+      font-weight: 900;
+      color: #00d4ff;
+      letter-spacing: .06em;
+      text-shadow: 0 0 28px rgba(0,212,255,.40);
+    }
+    .login-logo .oracle {
+      font-family: var(--font-head);
+      font-size: 28px;
+      font-weight: 700;
+      color: rgba(230,244,255,.92);
+      letter-spacing: .1em;
+    }
+    .login-logo .tagline {
+      display: block;
+      font-size: 11px;
+      color: rgba(0,212,255,.35);
+      letter-spacing: .22em;
+      text-transform: uppercase;
+      margin-top: 6px;
+      font-family: var(--font-mono);
+    }
+
+    /* ── Card ── */
+    .login-card {
+      background: linear-gradient(145deg, rgba(4,16,32,.97), rgba(2,10,20,.99));
+      border: 1px solid rgba(0,212,255,.14);
+      border-radius: 20px;
+      padding: 32px;
+      box-shadow:
+        0 8px 40px rgba(0,0,0,.55),
+        0 0 0 1px rgba(0,212,255,.05),
+        0 0 60px rgba(0,212,255,.04);
+    }
+
+    /* ── Tabs ── */
+    .login-tabs {
+      display: flex;
+      gap: 4px;
+      background: rgba(0,0,0,.28);
+      border: 1px solid rgba(255,255,255,.06);
+      border-radius: 12px;
+      padding: 4px;
+      margin-bottom: 24px;
+    }
+    .login-tab {
+      flex: 1;
+      padding: 9px 16px;
+      border-radius: 9px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: rgba(255,255,255,.38);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      cursor: pointer;
+      transition: background .15s, color .15s, border-color .15s;
+      font-family: var(--font-ui);
+    }
+    .login-tab:hover {
+      color: rgba(255,255,255,.65);
+      background: rgba(0,212,255,.05);
+    }
+    .login-tab.active {
+      background: rgba(0,212,255,.10);
+      color: rgba(0,212,255,.90);
+      border-color: rgba(0,212,255,.20);
+    }
+
+    /* ── Fields ── */
+    .login-field {
+      margin-bottom: 14px;
+    }
+    .login-field label {
+      display: block;
+      font-size: 11px;
+      color: rgba(0,212,255,.40);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      font-family: var(--font-mono);
+    }
+    .login-field input {
+      width: 100%;
+      padding: 11px 14px;
+      background: rgba(0,0,0,.32);
+      border: 1px solid rgba(0,212,255,.12);
+      border-radius: 12px;
+      color: rgba(230,244,255,.95);
+      font-size: 14px;
+      outline: none;
+      box-sizing: border-box;
+      transition: border-color .15s, box-shadow .15s;
+      font-family: var(--font-ui);
+    }
+    .login-field input:focus {
+      border-color: rgba(0,212,255,.40);
+      box-shadow: 0 0 0 3px rgba(0,212,255,.07);
+    }
+    .login-field input::placeholder {
+      color: rgba(0,212,255,.18);
+    }
+
+    /* ── Policy note ── */
+    .login-policy {
+      font-size: 12px;
+      color: rgba(0,212,255,.35);
+      margin-bottom: 18px;
+      font-family: var(--font-mono);
+      background: rgba(0,212,255,.04);
+      border: 1px solid rgba(0,212,255,.08);
+      border-radius: 8px;
+      padding: 8px 12px;
+    }
+
+    /* ── Primary button ── */
+    .login-btn {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, rgba(0,180,220,.22), rgba(0,120,180,.18));
+      border: 1px solid rgba(0,212,255,.30);
+      border-radius: 12px;
+      color: rgba(0,212,255,.95);
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background .15s, border-color .15s, box-shadow .15s, transform .1s;
+      letter-spacing: .05em;
+      font-family: var(--font-head);
+    }
+    .login-btn:hover {
+      background: linear-gradient(135deg, rgba(0,180,220,.32), rgba(0,120,180,.26));
+      border-color: rgba(0,212,255,.55);
+      box-shadow: 0 0 20px rgba(0,212,255,.12);
+    }
+    .login-btn:active { transform: scale(.98); }
+    .login-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+    /* Secondary (register) button */
+    .login-btn-ghost {
+      background: rgba(0,212,255,.05);
+      border-color: rgba(0,212,255,.16);
+      color: rgba(0,212,255,.70);
+    }
+    .login-btn-ghost:hover {
+      background: rgba(0,212,255,.10);
+      border-color: rgba(0,212,255,.36);
+      box-shadow: 0 0 16px rgba(0,212,255,.08);
+    }
+
+    /* ── Error ── */
+    .login-error {
+      display: none;
+      background: rgba(255,50,80,.08);
+      border: 1px solid rgba(255,50,80,.22);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: rgba(255,160,175,.92);
+      margin-top: 14px;
+      font-family: var(--font-mono);
+    }
+
+    /* ── Success ── */
+    .login-success {
+      display: none;
+      background: rgba(0,212,255,.06);
+      border: 1px solid rgba(0,212,255,.20);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: rgba(0,212,255,.85);
+      margin-top: 14px;
+      font-family: var(--font-mono);
+    }
+
+    /* ── Divider line ── */
+    .login-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(0,212,255,.12), transparent);
+      margin: 20px 0;
+    }
+
+    /* ── Terminal scan line decoration ── */
+    .login-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(0,212,255,.4), transparent);
+      border-radius: 20px 20px 0 0;
+    }
+    .login-card { position: relative; }
+  </style>
 </head>
 <body>
-  <main style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px">
-    <div style="width:100%;max-width:420px">
 
-      <!-- Logo -->
-      <div style="text-align:center;margin-bottom:32px">
-        <a href="/" style="display:inline-flex;align-items:baseline;gap:6px;text-decoration:none">
-          <span style="font-family:'Rajdhani',sans-serif;font-size:32px;font-weight:900;color:#5ba3f5;letter-spacing:2px">OGX</span>
-          <span style="font-family:'Rajdhani',sans-serif;font-size:26px;font-weight:700;color:rgba(230,244,255,.96);letter-spacing:1px">Oracle</span>
-        </a>
-      </div>
+<div class="login-wrap">
 
-      <!-- Card -->
-      <div class="card" style="padding:32px">
-        <h1 style="font-size:18px;font-weight:700;margin-bottom:6px">{{ t('auth.account') }}</h1>
-        <p class="muted fs-13" style="margin-bottom:24px">{{ t('auth.hint') }}</p>
+  <!-- Logo -->
+  <div class="login-logo">
+    <a href="/">
+      <span class="ogx">OGX</span>
+      <span class="oracle">Oracle</span>
+    </a>
+    <span class="tagline">// Galaxy Intelligence System</span>
+  </div>
 
-        <!-- Tabs -->
-        <div style="display:flex;gap:4px;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:4px;margin-bottom:24px">
-          <button id="tab-login" onclick="switchTab('login')"
-            style="flex:1;padding:9px 16px;border-radius:9px;border:none;background:rgba(91,163,245,.12);color:rgba(91,163,245,.9);font-size:13px;font-weight:700;letter-spacing:.03em;cursor:pointer;border:1px solid rgba(91,163,245,.18)">
-            {{ t('auth.login') }}
-          </button>
-          <button id="tab-register" onclick="switchTab('register')"
-            style="flex:1;padding:9px 16px;border-radius:9px;border:none;background:transparent;color:rgba(255,255,255,.45);font-size:13px;font-weight:700;letter-spacing:.03em;cursor:pointer">
-            {{ t('auth.register') }}
-          </button>
-        </div>
+  <!-- Card -->
+  <div class="login-card">
 
-        <div id="auth-error" style="display:none;margin-bottom:16px;padding:10px 14px;border-radius:10px;background:rgba(255,0,80,.12);border:1px solid rgba(255,0,80,.22);color:rgba(255,255,255,.92);font-size:13px"></div>
-
-        <!-- Login pane -->
-        <div id="pane-login">
-          <div style="margin-bottom:14px">
-            <label class="fs-12 muted" style="display:block;margin-bottom:6px">{{ t('auth.username') }}</label>
-            <input id="login-user" type="text" autocomplete="username" required maxlength="32"
-              style="width:100%;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.10);background:rgba(0,0,0,.25);color:rgba(255,255,255,.92);font-size:14px" />
-          </div>
-          <div style="margin-bottom:20px">
-            <label class="fs-12 muted" style="display:block;margin-bottom:6px">{{ t('auth.password') }}</label>
-            <input id="login-pass" type="password" autocomplete="current-password" required
-              style="width:100%;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.10);background:rgba(0,0,0,.25);color:rgba(255,255,255,.92);font-size:14px" />
-          </div>
-          <button onclick="doLogin()" class="btn" style="width:100%;padding:13px;font-size:14px">
-            {{ t('auth.login') }}
-          </button>
-        </div>
-
-        <!-- Register pane -->
-        <div id="pane-register" style="display:none">
-          <p class="muted fs-13" style="margin-bottom:16px">{{ t('auth.pw_policy', n=(settings.password_min_len if settings else 10)) }}</p>
-          <div style="margin-bottom:14px">
-            <label class="fs-12 muted" style="display:block;margin-bottom:6px">{{ t('auth.username') }}</label>
-            <input id="reg-user" type="text" autocomplete="username" required maxlength="32"
-              style="width:100%;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.10);background:rgba(0,0,0,.25);color:rgba(255,255,255,.92);font-size:14px" />
-          </div>
-          <div style="margin-bottom:20px">
-            <label class="fs-12 muted" style="display:block;margin-bottom:6px">{{ t('auth.password') }}</label>
-            <input id="reg-pass" type="password" autocomplete="new-password" required
-              style="width:100%;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.10);background:rgba(0,0,0,.25);color:rgba(255,255,255,.92);font-size:14px" />
-          </div>
-          <button onclick="doRegister()" class="btn ghost" style="width:100%;padding:13px;font-size:14px">
-            {{ t('auth.create_account') }}
-          </button>
-        </div>
-      </div>
-
+    <!-- Tabs -->
+    <div class="login-tabs">
+      <button class="login-tab active" id="tab-login" type="button">{{ t('auth.login') }}</button>
+      <button class="login-tab" id="tab-register" type="button">{{ t('auth.register') }}</button>
     </div>
-  </main>
 
-  <script>
-    window.I18N = {{ i18n_js | tojson }};
+    <!-- Error / Success -->
+    <div class="login-error" id="auth-error"></div>
+    <div class="login-success" id="auth-success"></div>
 
-    function switchTab(tab) {
-      const isLogin = tab === 'login';
-      document.getElementById('pane-login').style.display = isLogin ? '' : 'none';
-      document.getElementById('pane-register').style.display = isLogin ? 'none' : '';
-      document.getElementById('tab-login').style.background = isLogin ? 'rgba(91,163,245,.12)' : 'transparent';
-      document.getElementById('tab-login').style.color = isLogin ? 'rgba(91,163,245,.9)' : 'rgba(255,255,255,.45)';
-      document.getElementById('tab-login').style.border = isLogin ? '1px solid rgba(91,163,245,.18)' : 'none';
-      document.getElementById('tab-register').style.background = !isLogin ? 'rgba(91,163,245,.12)' : 'transparent';
-      document.getElementById('tab-register').style.color = !isLogin ? 'rgba(91,163,245,.9)' : 'rgba(255,255,255,.45)';
-      document.getElementById('tab-register').style.border = !isLogin ? '1px solid rgba(91,163,245,.18)' : 'none';
-      setError('');
-    }
+    <!-- LOGIN PANE -->
+    <div id="pane-login">
+      <div class="login-field">
+        <label for="login-user">{{ t('auth.username') }}</label>
+        <input type="text" id="login-user" autocomplete="username"
+               placeholder="{{ t('auth.username') | lower }}" autofocus maxlength="32" />
+      </div>
+      <div class="login-field" style="margin-bottom:20px">
+        <label for="login-pass">{{ t('auth.password') }}</label>
+        <input type="password" id="login-pass" autocomplete="current-password"
+               placeholder="{{ t('auth.password') | lower }}" />
+      </div>
+      <button class="login-btn" id="btn-login" type="button">{{ t('auth.login') }}</button>
+    </div>
 
-    function setError(msg) {
-      const el = document.getElementById('auth-error');
-      el.textContent = msg;
-      el.style.display = msg ? '' : 'none';
-    }
+    <!-- REGISTER PANE -->
+    <div id="pane-register" style="display:none">
+      <div class="login-policy">// {{ t('auth.pw_policy', n=(settings.password_min_len if settings else 10)) }}</div>
+      <div class="login-field">
+        <label for="reg-user">{{ t('auth.username') }}</label>
+        <input type="text" id="reg-user" autocomplete="username"
+               placeholder="{{ t('auth.username') | lower }}" maxlength="32" />
+      </div>
+      <div class="login-field" style="margin-bottom:20px">
+        <label for="reg-pass">{{ t('auth.password') }}</label>
+        <input type="password" id="reg-pass" autocomplete="new-password"
+               placeholder="{{ t('auth.password') | lower }}" />
+      </div>
+      <button class="login-btn login-btn-ghost" id="btn-register" type="button">{{ t('auth.create_account') }}</button>
+    </div>
 
-    function setToken(t) {
-      localStorage.setItem('ogx_jwt', t);
-      document.cookie = 'ogx_token=' + t + '; path=/; SameSite=Strict; Max-Age=86400';
-    }
+  </div>
 
-    async function doLogin() {
-      const u = document.getElementById('login-user').value.trim().toLowerCase();
-      const p = document.getElementById('login-pass').value;
-      if (!u || !p) { setError('{{ t("auth.username") }} und {{ t("auth.password") }} erforderlich.'); return; }
-      setError('');
-      const res = await fetch('/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: u, password: p })
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  const JWT_KEY    = "ogx_jwt";
+  const COOKIE_NAME = "ogx_token";
+
+  function getToken(){
+    try{ return localStorage.getItem(JWT_KEY)||""; }catch{ return ""; }
+  }
+  function setToken(t){
+    try{ localStorage.setItem(JWT_KEY, t); }catch{}
+    // also set expedition-compatible cookie for cross-app if needed
+    document.cookie = COOKIE_NAME+"="+t+"; path=/; SameSite=Strict; Max-Age=86400";
+  }
+
+  // already logged in? go home
+  if(getToken()){
+    fetch("/auth/me",{headers:{Authorization:"Bearer "+getToken()}})
+      .then(r=>r.json()).then(d=>{ if(d.ok) window.location.href = new URLSearchParams(location.search).get("next")||"/"; })
+      .catch(()=>{});
+  }
+
+  // ── Tab switching ──
+  function switchTab(tab){
+    const isLogin = tab === "login";
+    document.getElementById("pane-login").style.display    = isLogin ? "" : "none";
+    document.getElementById("pane-register").style.display = isLogin ? "none" : "";
+    document.getElementById("tab-login").className    = "login-tab" + (isLogin ? " active" : "");
+    document.getElementById("tab-register").className = "login-tab" + (!isLogin ? " active" : "");
+    clearMessages();
+    // focus first field
+    const f = isLogin ? document.getElementById("login-user") : document.getElementById("reg-user");
+    if(f) setTimeout(()=>f.focus(), 30);
+  }
+
+  document.getElementById("tab-login").addEventListener("click",    ()=>switchTab("login"));
+  document.getElementById("tab-register").addEventListener("click", ()=>switchTab("register"));
+
+  // ── Messages ──
+  function showError(msg){
+    const el = document.getElementById("auth-error");
+    el.textContent = msg; el.style.display = "block";
+    document.getElementById("auth-success").style.display = "none";
+  }
+  function showSuccess(msg){
+    const el = document.getElementById("auth-success");
+    el.textContent = msg; el.style.display = "block";
+    document.getElementById("auth-error").style.display = "none";
+  }
+  function clearMessages(){
+    document.getElementById("auth-error").style.display = "none";
+    document.getElementById("auth-success").style.display = "none";
+  }
+
+  const ERROR_MAP = {
+    "invalid_login":        "{{ t('auth.login') }} fehlgeschlagen — falscher Benutzername oder Passwort.",
+    "user_disabled":        "Account ist deaktiviert.",
+    "username_taken":       "Benutzername bereits vergeben.",
+    "password_too_short":   "Passwort zu kurz (min. {{ settings.password_min_len if settings else 10 }} Zeichen).",
+    "invalid_username":     "Benutzername ungültig (3–32 Zeichen).",
+    "registration_disabled":"Registrierung ist deaktiviert.",
+  };
+
+  // ── Login ──
+  async function doLogin(){
+    const u = document.getElementById("login-user").value.trim().toLowerCase();
+    const p = document.getElementById("login-pass").value;
+    if(!u || !p){ showError("Benutzername und Passwort erforderlich."); return; }
+    const btn = document.getElementById("btn-login");
+    btn.disabled = true; btn.textContent = "…";
+    clearMessages();
+    try{
+      const res = await fetch("/auth/login",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({username:u, password:p})
       });
       const data = await res.json();
-      if (data.ok) {
+      if(data.ok){
         setToken(data.token);
-        const next = new URLSearchParams(location.search).get('next') || '/';
-        location.href = next;
+        showSuccess("✓ " + (data.username||u) + (data.is_admin ? " (Admin)" : ""));
+        setTimeout(()=>{ window.location.href = new URLSearchParams(location.search).get("next")||"/"; }, 600);
       } else {
-        setError(data.error === 'invalid_login' ? 'Falscher Benutzername oder Passwort.' : (data.error || 'Login fehlgeschlagen.'));
+        showError(ERROR_MAP[data.error] || data.error || "Login fehlgeschlagen.");
       }
+    } catch(e){
+      showError("Netzwerkfehler. Bitte erneut versuchen.");
+    } finally {
+      btn.disabled = false; btn.textContent = "{{ t('auth.login') }}";
     }
+  }
 
-    async function doRegister() {
-      const u = document.getElementById('reg-user').value.trim().toLowerCase();
-      const p = document.getElementById('reg-pass').value;
-      if (!u || !p) { setError('Alle Felder erforderlich.'); return; }
-      setError('');
-      const res = await fetch('/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: u, password: p })
+  // ── Register ──
+  async function doRegister(){
+    const u = document.getElementById("reg-user").value.trim().toLowerCase();
+    const p = document.getElementById("reg-pass").value;
+    if(!u || !p){ showError("Alle Felder erforderlich."); return; }
+    const btn = document.getElementById("btn-register");
+    btn.disabled = true; btn.textContent = "…";
+    clearMessages();
+    try{
+      const res = await fetch("/auth/register",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({username:u, password:p})
       });
       const data = await res.json();
-      if (data.ok) {
+      if(data.ok){
         setToken(data.token);
-        location.href = '/';
+        showSuccess("✓ Account erstellt — " + (data.username||u) + (data.is_admin ? " (Admin)" : ""));
+        setTimeout(()=>{ window.location.href = new URLSearchParams(location.search).get("next")||"/"; }, 800);
       } else {
-        setError(data.error || 'Registrierung fehlgeschlagen.');
+        showError(ERROR_MAP[data.error] || data.error || "Registrierung fehlgeschlagen.");
       }
+    } catch(e){
+      showError("Netzwerkfehler. Bitte erneut versuchen.");
+    } finally {
+      btn.disabled = false; btn.textContent = "{{ t('auth.create_account') }}";
     }
+  }
 
-    // Enter key support
-    document.addEventListener('keydown', e => {
-      if (e.key === 'Enter') {
-        if (document.getElementById('pane-login').style.display !== 'none') doLogin();
-        else doRegister();
-      }
-    });
+  // ── Event bindings ──
+  document.getElementById("btn-login").addEventListener("click", doLogin);
+  document.getElementById("btn-register").addEventListener("click", doRegister);
 
-    // If already logged in, redirect
-    const tok = localStorage.getItem('ogx_jwt');
-    if (tok) location.href = new URLSearchParams(location.search).get('next') || '/';
-  </script>
+  // Enter key — smart routing
+  document.addEventListener("keydown", e=>{
+    if(e.key !== "Enter") return;
+    if(document.activeElement === document.getElementById("login-user")){
+      document.getElementById("login-pass").focus();
+      return;
+    }
+    if(document.activeElement === document.getElementById("reg-user")){
+      document.getElementById("reg-pass").focus();
+      return;
+    }
+    const loginVisible = document.getElementById("pane-login").style.display !== "none";
+    if(loginVisible) doLogin();
+    else doRegister();
+  });
+
+})();
+</script>
 </body>
 </html>
