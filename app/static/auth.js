@@ -264,30 +264,15 @@
   // UI BINDINGS
   // --------------------------------------------
   function bindUi() {
-    const openBtn = qs("#auth-open");
+    // #auth-open is now an <a href="/login"> — no click handler needed
     const logoutBtn = qs("#auth-logout");
 
-    if (openBtn) openBtn.addEventListener("click", openModal);
     if (logoutBtn) {
       logoutBtn.addEventListener("click", async () => {
         clearToken();
-        hideTokenPanel();
         await refreshStatus();
       });
     }
-
-    // Close handlers
-    document.addEventListener("click", (e) => {
-      const t = e.target;
-      if (!t) return;
-      if (t.matches && t.matches("[data-auth-close]")) closeModal();
-      const m = qs("#auth-modal");
-      if (m && !m.hidden && t.closest && t.closest("[data-auth-close]")) closeModal();
-    });
-
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") closeModal();
-    });
 
     // Token panel buttons
     const el = tokenEls();
