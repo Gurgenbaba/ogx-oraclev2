@@ -35,7 +35,7 @@
 
   function onSuccess(token) {
     // Save token to localStorage (same key auth.js uses)
-    localStorage.setItem('ogx_oracle_token', token);
+    localStorage.setItem('ogx_jwt', token);
     // Go directly to destination - no intermediate success page
     window.location.href = getNext();
   }

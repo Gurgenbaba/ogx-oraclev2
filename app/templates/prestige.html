@@ -170,7 +170,7 @@
   function qs(id) { return document.getElementById(id); }
 
   async function load() {
-    const token = localStorage.getItem('ogx_oracle_token');
+    const token = localStorage.getItem('ogx_jwt');
     if (!token) {
       qs('psg-loading').style.display = 'none';
       qs('psg-unauth').style.display = '';
