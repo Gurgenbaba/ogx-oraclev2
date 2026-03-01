@@ -407,6 +407,12 @@ async def admin_delete_colony(request: Request, colony_id: int):
 # ---------------------------------------------------------------------------
 # Pages (READ for all)
 # ---------------------------------------------------------------------------
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    return _template(request, "login.html", {})
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request, q: str = "", ally: str = "", tab: str = ""):
     q = (q or "").strip()
