@@ -1,8 +1,9 @@
 // app/static/auth.js
-// JWT auth for OGX Oracle UI:
+// JWT auth for OGX Oracle UI (Option B):
 // - Stores token in localStorage
-// - Provides window.ogxAuth + window.ogxFetch helpers
-// - Shows login/register modal when needed
+// - Shows auth status in topbar
+// - Clicking status opens token modal
+// - Logout clears token
 // CSP-safe: no inline JS, no eval.
 
 (function () {
@@ -12,108 +13,71 @@
 
   function qs(sel) { return document.querySelector(sel); }
 
-  function getCsrfToken() {
-    const meta = document.querySelector('meta[name="csrf-token"]');
-    return meta ? (meta.getAttribute("content") || "").trim() : "";
-  }
-
   function getToken() {
-    return (localStorage.getItem(TOKEN_KEY) || "").trim();
+    try { return (localStorage.getItem(TOKEN_KEY) || "").trim(); }
+    catch { return ""; }
   }
 
   function setToken(t) {
-    localStorage.setItem(TOKEN_KEY, String(t || ""));
+    try { localStorage.setItem(TOKEN_KEY, String(t || "")); } catch {}
   }
 
   function clearToken() {
-    localStorage.removeItem(TOKEN_KEY);
+    try { localStorage.removeItem(TOKEN_KEY); } catch {}
   }
 
-  function setError(msg) {
-    const box = qs("#auth-error");
-    if (!box) return;
-    if (!msg) {
-      box.style.display = "none";
-      box.textContent = "";
-      return;
-    }
-    box.style.display = "";
-    box.textContent = msg;
-  }
-
-  // --------------------------------------------
-  // TOKEN PANEL (new base.html compatible)
-  // --------------------------------------------
-  function tokenEls() {
+  // -------------------------------
+  // Token modal helpers
+  // -------------------------------
+  function modalEls() {
+    const modal = qs("#token-modal");
     return {
-      panel: qs("#auth-token-panel"),
-      badge: qs("#auth-token-badge"),
-      title: qs("#auth-token-title"),
-      wrap: qs("#auth-token-wrap"),
-      ta: qs("#auth-token"),
-      copied: qs("#auth-token-copied"),
-      btnToggle: qs("#auth-token-toggle"),
-      btnCopy: qs("#auth-token-copy"),
-      btnHide: qs("#auth-token-hide"),
+      modal,
+      backdrop: qs("#token-modal .token-modal__backdrop"),
+      close: qs("#token-close"),
+      copy: qs("#token-copy"),
+      hide: qs("#token-hide"),
+      ta: qs("#token-ta"),
+      copied: qs("#token-copied"),
+      sub: qs("#token-modal-sub"),
+      pill: qs("#token-pill"),
     };
   }
 
-  function collapseTokenPanel() {
-    const el = tokenEls();
-    if (el.wrap) el.wrap.style.display = "none";
-    if (el.btnToggle) el.btnToggle.textContent = "Show";
-    if (el.btnCopy) el.btnCopy.disabled = true;
-    if (el.copied) el.copied.style.display = "none";
-    if (el.ta) el.ta.scrollTop = 0;
-  }
+  function openTokenModal(usernameLabel) {
+    const el = modalEls();
+    if (!el.modal) return;
 
-  function hideTokenPanel() {
-    const el = tokenEls();
-    if (el.ta) el.ta.value = "";
-    if (el.copied) el.copied.style.display = "none";
-    if (el.panel) el.panel.style.display = "none";
-    collapseTokenPanel();
-  }
-
-  function showTokenPanel(token, title, mode) {
-    // mode: "login" | "register" | "info"
-    const el = tokenEls();
-
-    if (el.title) el.title.textContent = title || "Token";
-    if (el.badge) {
-      if (mode === "register") el.badge.textContent = "🎉 Registered";
-      else if (mode === "login") el.badge.textContent = "✅ Logged in";
-      else el.badge.textContent = "✅ Success";
-    }
+    const token = getToken();
 
     if (el.ta) {
-      el.ta.value = String(token || "");
+      el.ta.value = token || "";
       el.ta.scrollTop = 0;
     }
+    if (el.copied) el.copied.style.display = "none";
+    if (el.sub) el.sub.textContent = usernameLabel ? ("Logged in: " + usernameLabel) : "Logged in";
+    if (el.pill) el.pill.textContent = "Bearer JWT";
 
-    if (el.panel) el.panel.style.display = "";
-    collapseTokenPanel();
-  }
+    el.modal.hidden = false;
+    el.modal.setAttribute("aria-hidden", "false");
 
-  function toggleTokenPanel() {
-    const el = tokenEls();
-    if (!el.wrap || !el.btnToggle) return;
-
-    const isOpen = el.wrap.style.display !== "none";
-    if (isOpen) {
-      collapseTokenPanel();
-      return;
+    // focus textarea for quick ctrl+c
+    if (el.ta) {
+      el.ta.focus();
+      try { el.ta.setSelectionRange(0, 0); } catch {}
     }
-
-    // open
-    el.wrap.style.display = "";
-    el.btnToggle.textContent = "Hide";
-    if (el.btnCopy) el.btnCopy.disabled = false;
-    if (el.ta) el.ta.focus();
   }
 
-  async function copyTokenToClipboard() {
-    const el = tokenEls();
+  function closeTokenModal() {
+    const el = modalEls();
+    if (!el.modal) return;
+    el.modal.hidden = true;
+    el.modal.setAttribute("aria-hidden", "true");
+    if (el.copied) el.copied.style.display = "none";
+  }
+
+  async function copyToken() {
+    const el = modalEls();
     if (!el.ta) return;
 
     const val = String(el.ta.value || "").trim();
@@ -122,54 +86,54 @@
     try {
       await navigator.clipboard.writeText(val);
     } catch {
-      // fallback for older browsers / blocked clipboard
+      // fallback
       el.ta.focus();
       el.ta.select();
       document.execCommand("copy");
-      el.ta.setSelectionRange(0, 0);
+      try { el.ta.setSelectionRange(0, 0); } catch {}
     }
 
     if (el.copied) {
       el.copied.style.display = "";
-      window.setTimeout(() => { el.copied.style.display = "none"; }, 1200);
+      window.setTimeout(() => {
+        if (el.copied) el.copied.style.display = "none";
+      }, 1200);
     }
   }
 
-  // --------------------------------------------
-  // MODAL
-  // --------------------------------------------
-  function openModal() {
-    const m = qs("#auth-modal");
-    if (!m) return;
-    setError("");
-    hideTokenPanel();
-    m.hidden = false;
-    m.setAttribute("aria-hidden", "false");
-
-    const u = m.querySelector('#auth-login-form input[name="username"]');
-    if (u) u.focus();
+  function hideToken() {
+    const el = modalEls();
+    if (el.ta) el.ta.value = "";
+    if (el.copied) el.copied.style.display = "none";
   }
 
-  function closeModal() {
-    const m = qs("#auth-modal");
-    if (!m) return;
-    m.hidden = true;
-    m.setAttribute("aria-hidden", "true");
-    setError("");
-    hideTokenPanel();
+  function bindModal() {
+    const el = modalEls();
+    if (!el.modal) return;
+
+    if (el.close) el.close.addEventListener("click", closeTokenModal);
+    if (el.backdrop) el.backdrop.addEventListener("click", closeTokenModal);
+    if (el.copy) el.copy.addEventListener("click", copyToken);
+    if (el.hide) el.hide.addEventListener("click", hideToken);
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeTokenModal();
+    });
   }
 
-  // --------------------------------------------
-  // STATUS
-  // --------------------------------------------
+  // -------------------------------
+  // Status bar
+  // -------------------------------
   async function refreshStatus() {
-    const status = qs("#auth-status");
-    const openBtn = qs("#auth-open");
-    const logoutBtn = qs("#auth-logout");
+    const statusText = qs("#auth-status");
+    const statusBtn  = qs("#auth-status-btn");
+    const openBtn    = qs("#auth-open");
+    const logoutBtn  = qs("#auth-logout");
 
     const token = getToken();
     if (!token) {
-      if (status) status.textContent = "Not logged in";
+      if (statusText) statusText.textContent = window.I18N?.["auth.not_logged_in"] || "Not logged in";
+      if (statusBtn) statusBtn.style.display = "none";
       if (openBtn) openBtn.style.display = "";
       if (logoutBtn) logoutBtn.style.display = "none";
       return;
@@ -179,172 +143,61 @@
       const resp = await fetch("/auth/me", {
         headers: { Authorization: "Bearer " + token },
       });
+
       if (!resp.ok) throw new Error("not_ok");
+
       const data = await resp.json();
       if (!data || !data.ok) throw new Error("bad");
 
-      const label = data.is_admin ? `${data.username} (Admin)` : data.username;
-      if (status) status.textContent = "Logged in: " + label;
+      const label = data.is_admin ? (data.username + " (Admin)") : data.username;
+
+      if (statusText) statusText.textContent = "";
+      if (statusBtn) {
+        statusBtn.textContent = (window.I18N?.["auth.logged_in_as"] ? (window.I18N["auth.logged_in_as"] + " " + label) : ("Logged in: " + label));
+        statusBtn.style.display = "";
+        statusBtn.onclick = () => openTokenModal(label);
+      }
+
       if (openBtn) openBtn.style.display = "none";
       if (logoutBtn) logoutBtn.style.display = "";
     } catch (e) {
       clearToken();
-      if (status) status.textContent = "Session expired – please log in again";
+      if (statusText) statusText.textContent = window.I18N?.["auth.session_expired"] || "Session expired – please log in again";
+      if (statusBtn) statusBtn.style.display = "none";
       if (openBtn) openBtn.style.display = "";
       if (logoutBtn) logoutBtn.style.display = "none";
     }
   }
 
-  // --------------------------------------------
-  // AUTH CALLS
-  // --------------------------------------------
-  async function login(username, password) {
-    setError("");
-    hideTokenPanel();
-
-    const resp = await fetch("/auth/login", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ username, password }),
-    });
-    const data = await resp.json().catch(() => null);
-
-    if (!resp.ok || !data || !data.ok || !data.token) {
-      const err = data && data.error ? String(data.error) : "login_failed";
-      throw new Error(err);
-    }
-
-    setToken(data.token);
-    await refreshStatus();
-
-    // token panel (collapsed)
-    showTokenPanel(data.token, "Login successful – your JWT", "login");
-  }
-
-  async function register(username, password) {
-    setError("");
-    hideTokenPanel();
-
-    const resp = await fetch("/auth/register", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ username, password }),
-    });
-    const data = await resp.json().catch(() => null);
-
-    if (!resp.ok || !data || !data.ok || !data.token) {
-      const err = data && data.error ? String(data.error) : "register_failed";
-      throw new Error(err);
-    }
-
-    setToken(data.token);
-    await refreshStatus();
-
-    // token panel (collapsed)
-    showTokenPanel(data.token, "Registration successful – your JWT", "register");
-  }
-
-  // --------------------------------------------
-  // FETCH HELPER
-  // --------------------------------------------
-  async function ogxFetch(url, options) {
-    const opts = options ? { ...options } : {};
-    opts.headers = opts.headers ? { ...opts.headers } : {};
-
-    const csrf = getCsrfToken();
-    if (csrf && !opts.headers["x-csrf-token"]) opts.headers["x-csrf-token"] = csrf;
-
-    const token = getToken();
-    if (token && !opts.headers["Authorization"]) opts.headers["Authorization"] = "Bearer " + token;
-
-    return fetch(url, opts);
-  }
-
-  // --------------------------------------------
-  // UI BINDINGS
-  // --------------------------------------------
   function bindUi() {
-    // #auth-open is now an <a href="/login"> — no click handler needed
     const logoutBtn = qs("#auth-logout");
-
     if (logoutBtn) {
       logoutBtn.addEventListener("click", async () => {
         clearToken();
         await refreshStatus();
       });
     }
-
-    // Token panel buttons
-    const el = tokenEls();
-    if (el.btnToggle) el.btnToggle.addEventListener("click", toggleTokenPanel);
-    if (el.btnCopy) el.btnCopy.addEventListener("click", copyTokenToClipboard);
-    if (el.btnHide) el.btnHide.addEventListener("click", hideTokenPanel);
-
-    // Tab switching
-    document.querySelectorAll(".auth-tab").forEach(tab => {
-      tab.addEventListener("click", () => {
-        const target = tab.dataset.tab;
-        document.querySelectorAll(".auth-tab").forEach(t => t.classList.remove("active"));
-        tab.classList.add("active");
-        document.querySelectorAll(".auth-pane").forEach(p => p.style.display = "none");
-        const pane = qs("#auth-pane-" + target);
-        if (pane) pane.style.display = "block";
-        setError("");
-        // Focus first input in the active pane
-        const firstInput = pane && pane.querySelector("input");
-        if (firstInput) setTimeout(() => firstInput.focus(), 50);
-      });
-    });
-
-    const lf = qs("#auth-login-form");
-    if (lf) {
-      lf.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const fd = new FormData(lf);
-        const username = String(fd.get("username") || "");
-        const password = String(fd.get("password") || "");
-        try {
-          await login(username, password);
-        } catch (err) {
-          setError("Login failed: " + (err && err.message ? err.message : "unknown"));
-        }
-      });
-    }
-
-    const rf = qs("#auth-register-form");
-    if (rf) {
-      rf.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const fd = new FormData(rf);
-        const username = String(fd.get("username") || "");
-        const password = String(fd.get("password") || "");
-        try {
-          await register(username, password);
-        } catch (err) {
-          setError("Registration failed: " + (err && err.message ? err.message : "unknown"));
-        }
-      });
-    }
   }
 
-  // expose for other scripts
+  // expose minimal API for login.js
   window.ogxAuth = {
-    openModal,
-    closeModal,
     getToken,
     setToken,
     clearToken,
     refreshStatus,
+    openTokenModal,
+    closeTokenModal,
   };
-  window.ogxFetch = ogxFetch;
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", () => {
       bindUi();
+      bindModal();
       refreshStatus();
     });
   } else {
     bindUi();
+    bindModal();
     refreshStatus();
   }
 })();
