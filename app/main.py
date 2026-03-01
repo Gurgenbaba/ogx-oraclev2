@@ -456,25 +456,8 @@ async def admin_delete_colony(request: Request, colony_id: int):
 
 @app.get("/prestige", response_class=HTMLResponse)
 async def prestige_page(request: Request):
-    """Oracle Prestige profile page."""
-    async with AsyncSessionLocal() as db:
-        u, _ = await require_jwt_user(request, db)
-        if not u:
-            return RedirectResponse(url="/login", status_code=303)
-        summary = await get_prestige_summary(db, int(u.id))
-        board   = await prestige_leaderboard(db, limit=20)
-        for i, entry in enumerate(board):
-            res = await db.execute(select(User).where(User.id == entry["user_id"]))
-            usr = res.scalar_one_or_none()
-            entry["username"]        = usr.username if usr else f"user_{entry['user_id']}"
-            entry["rank"]            = i + 1
-            entry["is_current_user"] = (entry["user_id"] == int(u.id))
-        return _template(request, "prestige.html", {
-            "user":        u,
-            "summary":     summary,
-            "leaderboard": board,
-            "active_nav":  "prestige",
-        })
+    """Oracle Prestige profile page — client-side auth via /api/prestige."""
+    return _template(request, "prestige.html", {"active_nav": "prestige"})
 
 
 @app.get("/login", response_class=HTMLResponse)

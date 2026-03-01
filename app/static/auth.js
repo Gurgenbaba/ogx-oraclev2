@@ -184,16 +184,20 @@
       if (!data || !data.ok) throw new Error("bad");
 
       const label = data.is_admin ? `${data.username} (Admin)` : data.username;
-      if (status) { status.textContent = ""; status.style.display = "none"; }
-      const link = document.querySelector("#auth-status-link");
-      if (link) { link.textContent = "🏆 " + label; link.style.display = ""; }
+      if (status) { status.style.display = "none"; }
+      const usernameBtn = document.querySelector("#auth-username-btn");
+      if (usernameBtn) { usernameBtn.textContent = "🏆 " + label; usernameBtn.style.display = ""; }
+      const prestigeNav = document.querySelector("#nav-prestige");
+      if (prestigeNav) prestigeNav.style.display = "";
       if (openBtn) openBtn.style.display = "none";
       if (logoutBtn) logoutBtn.style.display = "";
     } catch (e) {
       clearToken();
       if (status) { status.textContent = "Session expired – please log in again"; status.style.display = ""; }
-      const link2 = document.querySelector("#auth-status-link");
-      if (link2) link2.style.display = "none";
+      const usernameBtn2 = document.querySelector("#auth-username-btn");
+      if (usernameBtn2) usernameBtn2.style.display = "none";
+      const prestigeNav2 = document.querySelector("#nav-prestige");
+      if (prestigeNav2) prestigeNav2.style.display = "none";
       if (openBtn) openBtn.style.display = "";
       if (logoutBtn) logoutBtn.style.display = "none";
     }
@@ -268,11 +272,54 @@
   // UI BINDINGS
   // --------------------------------------------
   function bindUi() {
+    // Username button → toggle token panel
+    const usernameBtn = qs("#auth-username-btn");
+    if (usernameBtn) {
+      usernameBtn.addEventListener("click", () => {
+        const panel = qs("#auth-token-panel");
+        const backdrop = qs("#auth-token-backdrop");
+        if (!panel) return;
+        const isOpen = panel.style.display !== "none";
+        if (isOpen) {
+          panel.style.display = "none";
+          if (backdrop) backdrop.style.display = "none";
+        } else {
+          // Populate token
+          const token = getToken();
+          const ta = qs("#auth-token");
+          if (ta && token) ta.value = token;
+          panel.style.display = "";
+          if (backdrop) backdrop.style.display = "";
+        }
+      });
+    }
+
+    // Token panel close button
+    const closeBtn = qs("#auth-token-close");
+    if (closeBtn) closeBtn.addEventListener("click", () => {
+      const panel = qs("#auth-token-panel");
+      const backdrop = qs("#auth-token-backdrop");
+      if (panel) panel.style.display = "none";
+      if (backdrop) backdrop.style.display = "none";
+    });
+
+    // Backdrop click closes panel
+    const backdrop = qs("#auth-token-backdrop");
+    if (backdrop) backdrop.addEventListener("click", () => {
+      const panel = qs("#auth-token-panel");
+      if (panel) panel.style.display = "none";
+      backdrop.style.display = "none";
+    });
+
     // #auth-open is now an <a href="/login"> — no click handler needed
     const logoutBtn = qs("#auth-logout");
 
     if (logoutBtn) {
       logoutBtn.addEventListener("click", async () => {
+        const panel = qs("#auth-token-panel");
+        const bd = qs("#auth-token-backdrop");
+        if (panel) panel.style.display = "none";
+        if (bd) bd.style.display = "none";
         clearToken();
         await refreshStatus();
       });

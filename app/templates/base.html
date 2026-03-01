@@ -26,16 +26,52 @@
         <a href="/galaxy" class="{% if active_nav == 'galaxy' %}active{% endif %}" {% if active_nav == 'galaxy' %}aria-current="page"{% endif %}>{{ t('nav.galaxy') }}</a>
         <a href="/import-ui" class="{% if active_nav == 'import' %}active{% endif %}" {% if active_nav == 'import' %}aria-current="page"{% endif %}>{{ t('nav.import') }}</a>
         <a href="/export.csv">{{ t('nav.export') }}</a>
+        <a href="/prestige" id="nav-prestige" class="{% if active_nav == 'prestige' %}active{% endif %}" style="display:none;">🏆 {{ t('prestige.title') }}</a>
         <a href="https://ogx-expedition-production.up.railway.app" target="_blank" class="muted" style="border-color:rgba(192,132,252,.25);color:#c084fc;">{{ t('nav.expedition') }}</a>
       </nav>
       <div class="authbox">
-        <a id="auth-status-link" href="/prestige" style="display:none; font-size:13px; color:#22d3ee; text-decoration:none; opacity:.85;" aria-live="polite"></a>
         <span id="auth-status" class="muted fs-13" aria-live="polite">{{ t('auth.not_logged_in') }}</span>
+        <button id="auth-username-btn" type="button" style="display:none;background:none;border:none;cursor:pointer;font-size:13px;color:#22d3ee;padding:0;" title="{{ t('auth.account') }}"></button>
         <a id="auth-open" class="btn btn-sm" href="/login">{{ t('auth.login') }}</a>
         <button id="auth-logout" class="btn btn-sm ghost" type="button" style="display:none;">{{ t('auth.logout') }}</button>
       </div>
     </div>
   </header>
+
+  <!-- Token panel (shown when clicking username) -->
+  <div id="auth-token-panel" style="
+    display:none; position:fixed; top:56px; right:16px; z-index:9000;
+    width:340px; background:#050f1e; border:1px solid #0e4a5a;
+    border-radius:10px; padding:16px 18px;
+    box-shadow:0 12px 40px rgba(0,0,0,.6);
+  ">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span id="auth-token-badge" style="font-size:11px;padding:2px 8px;background:#062030;color:#22d3ee;border:1px solid #0e4a5a;border-radius:10px;">Bearer JWT</span>
+        <span id="auth-token-title" style="font-size:12px;color:#94a3b8;">Token</span>
+      </div>
+      <button id="auth-token-close" style="background:none;border:none;cursor:pointer;color:#4b7a8a;font-size:16px;padding:2px 6px;line-height:1;" type="button">×</button>
+    </div>
+    <div id="auth-token-wrap" style="display:none;">
+      <textarea id="auth-token" readonly spellcheck="false" rows="4" style="
+        width:100%;box-sizing:border-box;background:#030d1a;
+        border:1px solid #0e4a5a;border-radius:6px;
+        color:#67e8f9;font-family:monospace;font-size:11px;
+        padding:8px;resize:none;
+      "></textarea>
+      <div style="font-size:10px;color:#4b7a8a;margin-top:5px;">
+        Header: <code style="color:#22d3ee;">Authorization: Bearer &lt;token&gt;</code>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px;align-items:center;">
+      <button id="auth-token-toggle" class="btn btn-sm" type="button">{{ t('auth.show') }}</button>
+      <button id="auth-token-copy" class="btn btn-sm" type="button" disabled>{{ t('auth.copy') }}</button>
+      <a href="/prestige" style="margin-left:auto;font-size:12px;color:#22d3ee;text-decoration:none;opacity:.8;">🏆 {{ t('prestige.title') }}</a>
+    </div>
+    <div id="auth-token-copied" style="display:none;font-size:11px;color:#22c55e;margin-top:6px;">✓ {{ t('auth.copied') }}</div>
+  </div>
+  <!-- Token panel backdrop -->
+  <div id="auth-token-backdrop" style="display:none;position:fixed;inset:0;z-index:8999;" aria-hidden="true"></div>
 
   <main id="main" class="wrap main-pad">{% block content %}{% endblock %}</main>
   <footer class="footer wrap">
