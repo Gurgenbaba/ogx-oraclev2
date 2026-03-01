@@ -16,11 +16,13 @@
 </head>
 <body>
   <a class="skip-link" href="#main">{{ t('nav.skip') }}</a>
+
   <header class="topbar">
     <div class="wrap topbar-inner">
       <a class="brand" href="/" aria-label="OGX Oracle">
         <span class="brand-mark">OGX</span><span class="brand-rest"> Oracle</span>
       </a>
+
       <nav class="nav">
         <a href="/" class="{% if active_nav == 'search' %}active{% endif %}" {% if active_nav == 'search' %}aria-current="page"{% endif %}>{{ t('nav.search') }}</a>
         <a href="/galaxy" class="{% if active_nav == 'galaxy' %}active{% endif %}" {% if active_nav == 'galaxy' %}aria-current="page"{% endif %}>{{ t('nav.galaxy') }}</a>
@@ -28,8 +30,14 @@
         <a href="/export.csv">{{ t('nav.export') }}</a>
         <a href="https://ogx-expedition-production.up.railway.app" target="_blank" class="muted" style="border-color:rgba(192,132,252,.25);color:#c084fc;">{{ t('nav.expedition') }}</a>
       </nav>
+
       <div class="authbox">
+        <!-- Plain text fallback (not clickable) -->
         <span id="auth-status" class="muted fs-13" aria-live="polite">{{ t('auth.not_logged_in') }}</span>
+
+        <!-- Clickable status button (Option B). Hidden until logged in. -->
+        <button id="auth-status-btn" class="auth-status-btn" type="button" style="display:none;"></button>
+
         <a id="auth-open" class="btn btn-sm" href="/login">{{ t('auth.login') }}</a>
         <button id="auth-logout" class="btn btn-sm ghost" type="button" style="display:none;">{{ t('auth.logout') }}</button>
       </div>
@@ -37,10 +45,39 @@
   </header>
 
   <main id="main" class="wrap main-pad">{% block content %}{% endblock %}</main>
+
   <footer class="footer wrap">
     <div>{{ t('footer.community') }}</div>
     <div>{{ t('footer.favicon_tip') }}</div>
   </footer>
+
+  <!-- Token Modal (Option B) -->
+  <div id="token-modal" class="token-modal" hidden aria-hidden="true">
+    <div class="token-modal__backdrop"></div>
+
+    <div class="token-modal__panel" role="dialog" aria-modal="true" aria-labelledby="token-modal-title">
+      <div class="token-modal__head">
+        <div class="token-modal__head-left">
+          <div class="token-modal__pill" id="token-pill">Bearer JWT</div>
+          <div class="token-modal__title" id="token-modal-title">Token</div>
+          <div class="token-modal__sub" id="token-modal-sub"></div>
+        </div>
+
+        <button id="token-close" class="token-close" type="button" aria-label="Close">✕</button>
+      </div>
+
+      <textarea id="token-ta" class="token-ta" readonly spellcheck="false"></textarea>
+
+      <div class="token-modal__actions">
+        <button id="token-copy" class="btn btn-sm" type="button">{{ t('auth.copy') }}</button>
+        <button id="token-hide" class="btn btn-sm ghost" type="button">Hide</button>
+      </div>
+
+      <div id="token-copied" class="token-copied" style="display:none;">{{ t('auth.copied') }}</div>
+      <div class="token-hint">Header: Authorization: Bearer &lt;token&gt;</div>
+    </div>
+  </div>
+
   <script src="/static/auth.js" defer></script>
   <script src="/static/player.js" defer></script>
   <script src="/static/hints.js" defer></script>
