@@ -1448,3 +1448,5 @@ details > summary::-webkit-details-marker {
 #auth-username:hover {
   opacity: .8;
 }
+
+.psg-empty-msg { font-size: .85rem; padding: 8px 0; }

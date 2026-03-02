@@ -18,37 +18,36 @@
 
   function gel(id) { return document.getElementById(id); }
 
+  // Uses psg-hidden class (matches template) — NOT hidden attribute
   function showState(state) {
-    var loading = gel("psg-loading");
-    var unauth  = gel("psg-unauth");
-    var content = gel("psg-content");
-    if (loading) { if (state === "loading") loading.removeAttribute("hidden"); else loading.setAttribute("hidden", ""); }
-    if (unauth)  { if (state === "unauth")  unauth.removeAttribute("hidden");  else unauth.setAttribute("hidden", ""); }
-    if (content) { if (state === "content") content.removeAttribute("hidden"); else content.setAttribute("hidden", ""); }
+    ["loading","unauth","content"].forEach(function(s) {
+      var el = gel("psg-" + s);
+      if (!el) return;
+      if (s === state) { el.classList.remove("psg-hidden"); }
+      else             { el.classList.add("psg-hidden"); }
+    });
   }
 
   function renderRankHero(s) {
     var icon = RANK_ICONS[s.prestige_rank] || "🪐";
-    var rankIcon = gel("psg-rank-icon");
-    var rankName = gel("psg-rank-name");
-    var totalOp  = gel("psg-total-op");
-    var scanner  = gel("psg-scanner-title");
-    var progFill = gel("psg-prog-fill");
+    var rankIcon  = gel("psg-rank-icon");
+    var rankName  = gel("psg-rank-name");
+    var totalOp   = gel("psg-total-op");
+    var scanner   = gel("psg-scanner-title");
+    var progFill  = gel("psg-prog-fill");
     var progLabel = gel("psg-prog-label");
 
-    if (rankIcon)  rankIcon.textContent = icon;
-    if (rankName)  rankName.textContent = s.prestige_rank || "Cadet";
-    if (totalOp)   totalOp.textContent  = (s.total_op || 0).toLocaleString();
-    if (scanner)   scanner.textContent  = s.scanner_title || "";
+    if (rankIcon)  rankIcon.textContent  = icon;
+    if (rankName)  rankName.textContent  = s.prestige_rank || "Cadet";
+    if (totalOp)   totalOp.textContent   = (s.total_op || 0).toLocaleString();
+    if (scanner)   scanner.textContent   = s.scanner_title || "";
 
     var pct = Math.min(100, Math.max(0, s.progress_pct || 0));
     if (progFill)  progFill.style.setProperty("--prog-pct", pct + "%");
     if (progLabel) {
-      if (s.next_rank) {
-        progLabel.textContent = s.next_rank.op_needed + " OP " + t("prestige.until_next", "bis nächster Rang");
-      } else {
-        progLabel.textContent = t("prestige.max_rank", "Maximaler Rang");
-      }
+      progLabel.textContent = s.next_rank
+        ? (s.next_rank.op_needed + " OP " + t("prestige.until_next", "bis nächster Rang"))
+        : t("prestige.max_rank", "Maximaler Rang");
     }
   }
 
@@ -75,7 +74,7 @@
 
     var name = document.createElement("div");
     name.className = "psg-ach-name";
-    name.textContent = a.name;
+    name.textContent = a.name || "";
 
     var desc = document.createElement("div");
     desc.className = "psg-ach-desc";
@@ -89,8 +88,8 @@
   }
 
   function renderAchievements(unlocked, locked) {
-    var uGrid = gel("psg-ach-unlocked");
-    var lGrid = gel("psg-ach-locked");
+    var uGrid  = gel("psg-ach-unlocked");
+    var lGrid  = gel("psg-ach-locked");
     var lTitle = gel("psg-ach-locked-title");
 
     if (uGrid) {
@@ -98,7 +97,10 @@
       if (unlocked && unlocked.length) {
         unlocked.forEach(function(a) { uGrid.appendChild(makeAchItem(a, true)); });
       } else {
-        uGrid.innerHTML = '<p class="muted" style="font-size:.8rem">' + t("prestige.no_achievements", "Noch keine Achievements.") + '</p>';
+        var p = document.createElement("p");
+        p.className = "muted psg-empty-msg";
+        p.textContent = t("prestige.no_achievements", "Noch keine Achievements.");
+        uGrid.appendChild(p);
       }
     }
 
@@ -108,6 +110,8 @@
         lGrid.innerHTML = "";
         locked.forEach(function(a) { lGrid.appendChild(makeAchItem(a, false)); });
       }
+    } else {
+      if (lTitle) lTitle.textContent = "";
     }
   }
 
@@ -131,9 +135,14 @@
       if (row.is_current_user) tr.className = "psg-lb-me";
 
       var tdRank = document.createElement("td");
-      tdRank.innerHTML = row.rank <= 3
-        ? '<span class="psg-lb-medal">' + MEDALS[row.rank - 1] + "</span>"
-        : row.rank;
+      if (row.rank <= 3) {
+        var span = document.createElement("span");
+        span.className = "psg-lb-medal";
+        span.textContent = MEDALS[row.rank - 1];
+        tdRank.appendChild(span);
+      } else {
+        tdRank.textContent = row.rank;
+      }
 
       var tdUser = document.createElement("td");
       tdUser.textContent = (row.is_current_user ? "→ " : "") + (row.username || "?");
@@ -166,7 +175,7 @@
       return r.json();
     })
     .then(function(d) {
-      if (!d.ok) { showState("unauth"); return; }
+      if (!d || !d.ok) { showState("unauth"); return; }
       renderRankHero(d);
       renderStats(d);
       renderAchievements(d.achievements_unlocked, d.achievements_locked);
@@ -174,10 +183,12 @@
       showState("content");
     })
     .catch(function(err) {
-      if (err.message !== "unauth") {
-        showState("loading");
-        var el = gel("psg-loading");
-        if (el) el.innerHTML = "⚠ " + t("prestige.loading", "Laden") + " — Fehler.";
+      if (err && err.message === "unauth") return;
+      showState("loading");
+      var el = gel("psg-loading");
+      if (el) {
+        el.className = "psg-state psg-error";
+        el.textContent = "⚠ " + t("prestige.loading", "Laden") + " — " + (err && err.message ? err.message : "Fehler");
       }
     });
   }
