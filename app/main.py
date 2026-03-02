@@ -66,10 +66,16 @@ async def lifespan(app: FastAPI):
     if settings.env == "dev":
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+        async with AsyncSessionLocal() as db:
+            await seed_achievements(db)
     else:
-        # prod: verify DB reachable (fail fast on boot)
+        # prod: verify DB reachable, then ensure prestige tables + achievements exist
         async with engine.begin() as conn:
             await conn.execute(text("SELECT 1"))
+            # Create any missing tables (safe: checkfirst=True via create_all)
+            await conn.run_sync(Base.metadata.create_all)
+        async with AsyncSessionLocal() as db:
+            await seed_achievements(db)
 
     yield
 

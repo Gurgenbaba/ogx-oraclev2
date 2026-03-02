@@ -8,10 +8,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="/static/app.css" />
+  <link rel="stylesheet" href="/static/login.css" />
   <link rel="icon" type="image/x-icon" href="/static/favicon.ico?v=2" />
   <script>window.I18N = {{ i18n_js | tojson }};</script>
 </head>
-<body class="login-page">
+<body>
 
 <div class="login-wrap">
 
@@ -33,22 +34,6 @@
     </div>
 
     <div class="login-error" id="auth-error"></div>
-
-    <!-- Token panel — shown after login/register, before redirect -->
-    <div class="token-panel" id="token-panel">
-      <div class="token-panel-head">
-        <span class="token-badge" id="token-badge">✓ Login</span>
-        <span class="token-label">Bearer Token</span>
-        <div class="token-actions">
-          <button class="login-btn" id="token-copy-btn" type="button">{{ t('auth.copy') }}</button>
-          <button class="login-btn login-btn-ghost" id="token-continue-btn" type="button">Weiter →</button>
-        </div>
-      </div>
-      <textarea class="token-ta" id="token-ta" readonly spellcheck="false"></textarea>
-      <div class="token-copied" id="token-copied">{{ t('auth.copied') }}</div>
-      <div class="token-hint">Header: Authorization: Bearer &lt;token&gt;</div>
-      <div class="token-redirect">Weiterleitung in <span id="token-countdown">5</span>s…</div>
-    </div>
 
     <!-- Login pane -->
     <div id="pane-login">
@@ -79,6 +64,27 @@
                placeholder="{{ t('auth.password') | lower }}" />
       </div>
       <button class="login-btn login-btn-ghost" id="btn-register" type="button">{{ t('auth.create_account') }}</button>
+    </div>
+
+    <!-- Token pane — shown after successful login/register, hidden initially -->
+    <div id="pane-token" hidden>
+      <div class="success-head">
+        <div class="success-icon">✓</div>
+        <div>
+          <div class="success-title" id="success-title"></div>
+          <div class="success-sub">Bearer JWT — {{ t('auth.token_collector') }}</div>
+        </div>
+      </div>
+      <div class="token-box">
+        <div class="token-box-label">Bearer JWT Token</div>
+        <textarea class="token-box-ta" id="token-ta" readonly spellcheck="false"></textarea>
+        <div class="token-box-hint">{{ t('auth.token_hint') }}</div>
+      </div>
+      <div class="success-actions">
+        <button class="login-btn" id="btn-copy" type="button">{{ t('auth.copy') }}</button>
+        <a class="login-btn login-btn-ghost" href="/" id="btn-continue">{{ t('auth.continue') }} →</a>
+      </div>
+      <div class="success-copied" id="copied-msg">✓ {{ t('auth.copied') }}</div>
     </div>
 
   </div>

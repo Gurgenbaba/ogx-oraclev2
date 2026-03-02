@@ -1,104 +1,161 @@
+/**
+ * OGX Oracle — Login page logic
+ * CSP-safe: external file only
+ * After login: shows token inline on the same page, no redirect to success page
+ */
 (function () {
-  const tabLogin    = document.getElementById('tab-login');
-  const tabReg      = document.getElementById('tab-register');
-  const paneLogin   = document.getElementById('pane-login');
-  const paneReg     = document.getElementById('pane-register');
-  const errBox      = document.getElementById('auth-error');
-  const btnLogin    = document.getElementById('btn-login');
-  const btnRegister = document.getElementById('btn-register');
+  "use strict";
+
+  var tabLogin    = document.getElementById("tab-login");
+  var tabReg      = document.getElementById("tab-register");
+  var paneLogin   = document.getElementById("pane-login");
+  var paneReg     = document.getElementById("pane-register");
+  var errBox      = document.getElementById("auth-error");
+  var btnLogin    = document.getElementById("btn-login");
+  var btnRegister = document.getElementById("btn-register");
+
+  // Token success panel elements
+  var paneToken   = document.getElementById("pane-token");
+  var tokenTa     = document.getElementById("token-ta");
+  var btnCopy     = document.getElementById("btn-copy");
+  var btnContinue = document.getElementById("btn-continue");
+  var copiedMsg   = document.getElementById("copied-msg");
+  var successTitle = document.getElementById("success-title");
 
   function showErr(msg) {
     if (!errBox) return;
     errBox.textContent = msg;
-    errBox.style.display = msg ? 'block' : 'none';
+    errBox.style.display = msg ? "block" : "none";
+  }
+
+  function getCsrf() {
+    var m = document.querySelector("meta[name=\"csrf-token\"]");
+    return m ? m.content : "";
+  }
+
+  function getNext() {
+    return new URLSearchParams(window.location.search).get("next") || "/";
   }
 
   function switchTab(toLogin) {
-    tabLogin.classList.toggle('active', toLogin);
-    tabReg.classList.toggle('active', !toLogin);
-    paneLogin.hidden = !toLogin;
-    paneReg.hidden   = toLogin;
-    showErr('');
+    if (tabLogin)  tabLogin.classList.toggle("active", toLogin);
+    if (tabReg)    tabReg.classList.toggle("active", !toLogin);
+    if (paneLogin) paneLogin.hidden = !toLogin;
+    if (paneReg)   paneReg.hidden   = toLogin;
+    showErr("");
   }
 
-  tabLogin.addEventListener('click', function () { switchTab(true); });
-  tabReg.addEventListener('click', function () { switchTab(false); });
+  if (tabLogin) tabLogin.addEventListener("click", function () { switchTab(true); });
+  if (tabReg)   tabReg.addEventListener("click",   function () { switchTab(false); });
 
-  function getCsrf() {
-    const m = document.querySelector('meta[name="csrf-token"]');
-    return m ? m.content : '';
+  function onSuccess(token, username) {
+    // Persist token
+    localStorage.setItem("ogx_jwt", token);
+
+    // Show token panel
+    if (paneLogin)  paneLogin.hidden  = true;
+    if (paneReg)    paneReg.hidden    = true;
+    if (paneToken)  paneToken.hidden  = false;
+    if (tabLogin)   tabLogin.style.display = "none";
+    if (tabReg)     tabReg.style.display   = "none";
+    if (errBox)     errBox.style.display   = "none";
+
+    if (successTitle) successTitle.textContent = (window.I18N && window.I18N["auth.welcome_user"] || "Willkommen, ") + username;
+    if (tokenTa) tokenTa.value = token;
+
+    // Set continue link
+    if (btnContinue) btnContinue.href = getNext();
   }
 
-  function redirectToSuccess(token, username, next) {
-    const url = '/login/success?t=' + encodeURIComponent(token)
-              + '&u=' + encodeURIComponent(username)
-              + '&next=' + encodeURIComponent(next || '/');
-    window.location.href = url;
+  // Copy button
+  if (btnCopy && tokenTa) {
+    btnCopy.addEventListener("click", function () {
+      var val = tokenTa.value;
+      if (!val) return;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(val).then(showCopied).catch(fallbackCopy);
+      } else {
+        fallbackCopy();
+      }
+    });
+  }
+
+  function fallbackCopy() {
+    tokenTa.select();
+    try { document.execCommand("copy"); showCopied(); } catch (e) {}
+  }
+
+  function showCopied() {
+    if (btnCopy) btnCopy.textContent = "✓ Kopiert!";
+    if (copiedMsg) copiedMsg.classList.add("visible");
+    setTimeout(function () {
+      if (btnCopy) btnCopy.textContent = window.I18N && window.I18N["auth.copy"] || "Token kopieren";
+      if (copiedMsg) copiedMsg.classList.remove("visible");
+    }, 2000);
   }
 
   function doLogin() {
-    const username = document.getElementById('login-user').value.trim();
-    const password = document.getElementById('login-pass').value;
-    if (!username || !password) { showErr('Bitte alle Felder ausfüllen.'); return; }
+    var username = document.getElementById("login-user").value.trim();
+    var password = document.getElementById("login-pass").value;
+    if (!username || !password) { showErr("Bitte alle Felder ausfüllen."); return; }
     btnLogin.disabled = true;
-    btnLogin.textContent = '…';
-    fetch('/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
-      body: JSON.stringify({ username, password })
+    btnLogin.textContent = "…";
+    fetch("/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-csrf-token": getCsrf() },
+      body: JSON.stringify({ username: username, password: password })
     })
     .then(function (r) { return r.json(); })
     .then(function (d) {
       if (d.ok && d.token) {
-        redirectToSuccess(d.token, username, new URLSearchParams(window.location.search).get('next') || '/');
+        onSuccess(d.token, username);
       } else {
-        showErr(d.detail || d.error || d.message || 'Login fehlgeschlagen.');
+        showErr(d.detail || d.error || d.message || "Login fehlgeschlagen.");
         btnLogin.disabled = false;
-        btnLogin.textContent = window.I18N && window.I18N['auth.login'] || 'Login';
+        btnLogin.textContent = window.I18N && window.I18N["auth.login"] || "Login";
       }
     })
     .catch(function () {
-      showErr('Netzwerkfehler.');
+      showErr("Netzwerkfehler.");
       btnLogin.disabled = false;
-      btnLogin.textContent = window.I18N && window.I18N['auth.login'] || 'Login';
+      btnLogin.textContent = window.I18N && window.I18N["auth.login"] || "Login";
     });
   }
 
   function doRegister() {
-    const username = document.getElementById('reg-user').value.trim();
-    const password = document.getElementById('reg-pass').value;
-    if (!username || !password) { showErr('Bitte alle Felder ausfüllen.'); return; }
+    var username = document.getElementById("reg-user").value.trim();
+    var password = document.getElementById("reg-pass").value;
+    if (!username || !password) { showErr("Bitte alle Felder ausfüllen."); return; }
     btnRegister.disabled = true;
-    btnRegister.textContent = '…';
-    fetch('/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
-      body: JSON.stringify({ username, password })
+    btnRegister.textContent = "…";
+    fetch("/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-csrf-token": getCsrf() },
+      body: JSON.stringify({ username: username, password: password })
     })
     .then(function (r) { return r.json(); })
     .then(function (d) {
       if (d.ok && d.token) {
-        redirectToSuccess(d.token, username, new URLSearchParams(window.location.search).get('next') || '/');
+        onSuccess(d.token, username);
       } else {
-        showErr(d.detail || d.error || d.message || 'Registrierung fehlgeschlagen.');
+        showErr(d.detail || d.error || d.message || "Registrierung fehlgeschlagen.");
         btnRegister.disabled = false;
-        btnRegister.textContent = window.I18N && window.I18N['auth.create_account'] || 'Account erstellen';
+        btnRegister.textContent = window.I18N && window.I18N["auth.create_account"] || "Account erstellen";
       }
     })
     .catch(function () {
-      showErr('Netzwerkfehler.');
+      showErr("Netzwerkfehler.");
       btnRegister.disabled = false;
-      btnRegister.textContent = window.I18N && window.I18N['auth.create_account'] || 'Account erstellen';
+      btnRegister.textContent = window.I18N && window.I18N["auth.create_account"] || "Account erstellen";
     });
   }
 
-  btnLogin.addEventListener('click', doLogin);
-  btnRegister.addEventListener('click', doRegister);
+  if (btnLogin)    btnLogin.addEventListener("click", doLogin);
+  if (btnRegister) btnRegister.addEventListener("click", doRegister);
 
-  // Enter key
-  document.addEventListener('keydown', function (e) {
-    if (e.key !== 'Enter') return;
-    if (!paneLogin.hidden) doLogin();
-    else if (!paneReg.hidden) doRegister();
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter") return;
+    if (paneLogin && !paneLogin.hidden) doLogin();
+    else if (paneReg && !paneReg.hidden) doRegister();
   });
 })();

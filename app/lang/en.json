@@ -17,7 +17,7 @@
   "auth.create_account": "Create account",
   "auth.pw_policy": "Password min. {n} characters (Policy in Settings).",
   "auth.show": "Show",
-  "auth.copy": "Copy",
+  "auth.copy": "Copy token",
   "auth.copied": "Copied ✅",
   "auth.bearer": "Bearer Token:",
   "auth.success": "✅ Success",
@@ -181,5 +181,9 @@
   "profile.next_rank": "→ {rank}",
   "nav.prestige": "🏆 Prestige",
   "auth.profile": "Profile",
-  "prestige.loading": "Loading…"
+  "prestige.loading": "Loading…",
+  "auth.welcome_user": "Welcome, ",
+  "auth.token_hint": "Copy and store securely — only shown once.",
+  "auth.token_collector": "Needed for the Collector script → right-click Oracle button in game",
+  "auth.continue": "Continue to Oracle"
 }

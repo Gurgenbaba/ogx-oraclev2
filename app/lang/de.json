@@ -17,7 +17,7 @@
   "auth.create_account": "Account erstellen",
   "auth.pw_policy": "Passwort min. {n} Zeichen (Policy in Settings).",
   "auth.show": "Anzeigen",
-  "auth.copy": "Kopieren",
+  "auth.copy": "Token kopieren",
   "auth.copied": "Kopiert ✅",
   "auth.bearer": "Bearer Token:",
   "auth.success": "✅ Erfolg",
@@ -181,5 +181,9 @@
   "profile.next_rank": "→ {rank}",
   "nav.prestige": "🏆 Prestige",
   "auth.profile": "Profil",
-  "prestige.loading": "Laden…"
+  "prestige.loading": "Laden…",
+  "auth.welcome_user": "Willkommen, ",
+  "auth.token_hint": "Kopieren und sicher aufbewahren — wird nur einmal angezeigt.",
+  "auth.token_collector": "Benötigt für das Collector-Script → Rechtsklick auf Oracle Button im Spiel",
+  "auth.continue": "Weiter zum Oracle"
 }

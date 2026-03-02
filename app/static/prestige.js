@@ -47,7 +47,7 @@
     if (s.next_rank) {
       gel("psg-next-name").textContent     = "→ " + (t("rank." + s.next_rank.name) || s.next_rank.name);
       gel("psg-next-op").textContent       = fmt(s.next_rank.op_needed) + " " + t("prestige.op_needed");
-      gel("psg-prog-fill").style.width     = (s.progress_pct || 0) + "%";
+      gel("psg-prog-fill").style.setProperty("--prog-pct", (s.progress_pct || 0) + "%");
       progEl.classList.remove("psg-hidden");
     } else {
       maxrankEl.classList.remove("psg-hidden");
