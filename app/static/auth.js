@@ -184,18 +184,14 @@
       if (!data || !data.ok) throw new Error("bad");
 
       const label = data.is_admin ? `${data.username} (Admin)` : data.username;
-      if (status) status.style.display = "none";
+      if (status) status.textContent = "Logged in: " + label;
       if (openBtn) openBtn.style.display = "none";
-      const loginBtn = qs("#auth-loggedin-btn");
-      if (loginBtn) { loginBtn.textContent = "Logged in: " + label; loginBtn.style.display = ""; loginBtn.setAttribute("aria-expanded","false"); }
       if (logoutBtn) logoutBtn.style.display = "";
+      const prestigeNav = document.querySelector("#nav-prestige");
+      if (prestigeNav) prestigeNav.style.display = "";
     } catch (e) {
       clearToken();
-      if (status) { status.textContent = "Session expired – please log in again"; status.style.display = ""; }
-      const loginBtn2 = qs("#auth-loggedin-btn");
-      if (loginBtn2) loginBtn2.style.display = "none";
-      const drop2 = qs("#token-drop");
-      if (drop2) drop2.classList.remove("open");
+      if (status) status.textContent = "Session expired – please log in again";
       if (openBtn) openBtn.style.display = "";
       if (logoutBtn) logoutBtn.style.display = "none";
     }
@@ -270,75 +266,23 @@
   // UI BINDINGS
   // --------------------------------------------
   function bindUi() {
-    // ── Token dropdown ──────────────────────────
-    const loginBtn = qs("#auth-loggedin-btn");
-    const drop = qs("#token-drop");
-
-    function openDrop() {
-      if (!drop) return;
-      const token = getToken();
-      // populate textarea
-      const ta = qs("#token-drop-ta");
-      if (ta) ta.value = token || "";
-      drop.classList.add("open");
-      if (loginBtn) loginBtn.setAttribute("aria-expanded","true");
-    }
-    function closeDrop() {
-      if (!drop) return;
-      drop.classList.remove("open");
-      if (loginBtn) loginBtn.setAttribute("aria-expanded","false");
-    }
-
-    if (loginBtn) loginBtn.addEventListener("click", () => {
-      drop && drop.classList.contains("open") ? closeDrop() : openDrop();
-    });
-
-    const closeBtn = qs("#token-drop-close");
-    if (closeBtn) closeBtn.addEventListener("click", closeDrop);
-
-    const showBtn = qs("#token-drop-show");
-    const ta = qs("#token-drop-ta");
-    if (showBtn && ta) {
-      showBtn.addEventListener("click", () => {
-        const hidden = ta.style.display === "none";
-        ta.style.display = hidden ? "" : "none";
-        showBtn.textContent = hidden ? (window.I18N && window.I18N["auth.show"] ? window.I18N["auth.show"].replace(/show/i,"Hide").replace(/Anzeigen/,"Verbergen").replace(/Afficher/,"Masquer") : "Hide") : (window.I18N && window.I18N["auth.show"] || "Show");
-        if (hidden) ta.select();
-      });
-    }
-
-    const copyBtn = qs("#token-drop-copy");
-    const copiedMsg = qs("#token-drop-copied");
-    if (copyBtn && ta) {
-      copyBtn.addEventListener("click", async () => {
-        const val = (ta.value || "").trim();
-        if (!val) return;
-        try { await navigator.clipboard.writeText(val); }
-        catch { ta.select(); document.execCommand("copy"); }
-        if (copiedMsg) { copiedMsg.style.display = ""; setTimeout(() => copiedMsg.style.display = "none", 1500); }
-      });
-    }
-
-    // Close dropdown on outside click
-    document.addEventListener("click", e => {
-      if (drop && drop.classList.contains("open")) {
-        if (!drop.contains(e.target) && e.target !== loginBtn) closeDrop();
-      }
-    });
-
-    document.addEventListener("keydown", e => { if (e.key === "Escape") closeDrop(); });
-
-    // ── Logout ──────────────────────────────────
+    // #auth-open is now an <a href="/login"> — no click handler needed
     const logoutBtn = qs("#auth-logout");
+
     if (logoutBtn) {
       logoutBtn.addEventListener("click", async () => {
-        closeDrop();
         clearToken();
         await refreshStatus();
       });
     }
 
-    // ── Tab switching (login page) ───────────────
+    // Token panel buttons
+    const el = tokenEls();
+    if (el.btnToggle) el.btnToggle.addEventListener("click", toggleTokenPanel);
+    if (el.btnCopy) el.btnCopy.addEventListener("click", copyTokenToClipboard);
+    if (el.btnHide) el.btnHide.addEventListener("click", hideTokenPanel);
+
+    // Tab switching
     document.querySelectorAll(".auth-tab").forEach(tab => {
       tab.addEventListener("click", () => {
         const target = tab.dataset.tab;
@@ -348,6 +292,7 @@
         const pane = qs("#auth-pane-" + target);
         if (pane) pane.style.display = "block";
         setError("");
+        // Focus first input in the active pane
         const firstInput = pane && pane.querySelector("input");
         if (firstInput) setTimeout(() => firstInput.focus(), 50);
       });
@@ -358,20 +303,32 @@
       lf.addEventListener("submit", async (e) => {
         e.preventDefault();
         const fd = new FormData(lf);
-        try { await login(String(fd.get("username")||""), String(fd.get("password")||"")); }
-        catch (err) { setError("Login failed: " + (err && err.message ? err.message : "unknown")); }
+        const username = String(fd.get("username") || "");
+        const password = String(fd.get("password") || "");
+        try {
+          await login(username, password);
+        } catch (err) {
+          setError("Login failed: " + (err && err.message ? err.message : "unknown"));
+        }
       });
     }
+
     const rf = qs("#auth-register-form");
     if (rf) {
       rf.addEventListener("submit", async (e) => {
         e.preventDefault();
         const fd = new FormData(rf);
-        try { await register(String(fd.get("username")||""), String(fd.get("password")||"")); }
-        catch (err) { setError("Registration failed: " + (err && err.message ? err.message : "unknown")); }
+        const username = String(fd.get("username") || "");
+        const password = String(fd.get("password") || "");
+        try {
+          await register(username, password);
+        } catch (err) {
+          setError("Registration failed: " + (err && err.message ? err.message : "unknown"));
+        }
       });
     }
   }
+
   // expose for other scripts
   window.ogxAuth = {
     openModal,

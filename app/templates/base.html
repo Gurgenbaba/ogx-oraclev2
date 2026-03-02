@@ -13,39 +13,6 @@
   <link rel="shortcut icon" href="/static/favicon.ico?v=2" />
   {% block head_extra %}{% endblock %}
   <script>window.I18N = {{ i18n_js | tojson }};</script>
-  <style>
-    /* Token dropdown panel */
-    .token-drop {
-      display: none;
-      position: absolute;
-      top: calc(100% + 8px);
-      right: 0;
-      width: 320px;
-      background: #07111f;
-      border: 1px solid #1e3256;
-      border-radius: 10px;
-      padding: 14px 16px;
-      box-shadow: 0 16px 48px rgba(0,0,0,.7);
-      z-index: 9999;
-    }
-    .token-drop.open { display: block; }
-    .token-drop textarea {
-      width: 100%; box-sizing: border-box;
-      background: #030d1a; border: 1px solid #1e3256; border-radius: 6px;
-      color: #67e8f9; font-family: monospace; font-size: 11px;
-      padding: 8px; resize: none; margin-top: 8px;
-    }
-    .token-drop-actions { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
-    .token-drop-hint { font-size: 10px; color: #4b7a8a; margin-top: 6px; }
-    .token-drop-copied { display:none; font-size:11px; color:#22c55e; margin-top:5px; }
-    .authbox-wrap { position: relative; display: flex; align-items: center; gap: 8px; }
-    #auth-loggedin-btn {
-      display: none; background: none; border: none; cursor: pointer;
-      font-size: 13px; color: #94a3b8; padding: 0;
-      white-space: nowrap;
-    }
-    #auth-loggedin-btn:hover { color: #e2e8f0; }
-  </style>
 </head>
 <body>
   <a class="skip-link" href="#main">{{ t('nav.skip') }}</a>
@@ -59,34 +26,13 @@
         <a href="/galaxy" class="{% if active_nav == 'galaxy' %}active{% endif %}" {% if active_nav == 'galaxy' %}aria-current="page"{% endif %}>{{ t('nav.galaxy') }}</a>
         <a href="/import-ui" class="{% if active_nav == 'import' %}active{% endif %}" {% if active_nav == 'import' %}aria-current="page"{% endif %}>{{ t('nav.import') }}</a>
         <a href="/export.csv">{{ t('nav.export') }}</a>
+        <a href="/prestige" id="nav-prestige" class="{% if active_nav == 'prestige' %}active{% endif %}" style="display:none;">🏆 {{ t('prestige.title') }}</a>
         <a href="https://ogx-expedition-production.up.railway.app" target="_blank" class="muted" style="border-color:rgba(192,132,252,.25);color:#c084fc;">{{ t('nav.expedition') }}</a>
       </nav>
-      <div class="authbox-wrap">
-        <!-- Not logged in -->
+      <div class="authbox">
         <span id="auth-status" class="muted fs-13" aria-live="polite">{{ t('auth.not_logged_in') }}</span>
         <a id="auth-open" class="btn btn-sm" href="/login">{{ t('auth.login') }}</a>
-
-        <!-- Logged in -->
-        <button id="auth-loggedin-btn" type="button" aria-haspopup="true" aria-expanded="false"></button>
         <button id="auth-logout" class="btn btn-sm ghost" type="button" style="display:none;">{{ t('auth.logout') }}</button>
-
-        <!-- Token dropdown -->
-        <div class="token-drop" id="token-drop" role="dialog" aria-label="Token">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-            <span style="font-size:11px;font-weight:600;color:#e2e8f0;">Bearer JWT Token</span>
-            <div style="display:flex;gap:8px;align-items:center;">
-              <a href="/prestige" style="font-size:11px;color:#22d3ee;text-decoration:none;">🏆 Prestige</a>
-              <button id="token-drop-close" type="button" style="background:none;border:none;cursor:pointer;color:#64748b;font-size:16px;line-height:1;padding:0 2px;">×</button>
-            </div>
-          </div>
-          <textarea id="token-drop-ta" readonly spellcheck="false" rows="4" style="display:none;"></textarea>
-          <div class="token-drop-hint">Header: <code style="color:#22d3ee;">Authorization: Bearer &lt;token&gt;</code></div>
-          <div class="token-drop-actions">
-            <button id="token-drop-show" class="btn btn-sm" type="button">{{ t('auth.show') }}</button>
-            <button id="token-drop-copy" class="btn btn-sm" type="button">{{ t('auth.copy') }}</button>
-          </div>
-          <div class="token-drop-copied" id="token-drop-copied">✓ {{ t('auth.copied') }}</div>
-        </div>
       </div>
     </div>
   </header>

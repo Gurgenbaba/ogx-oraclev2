@@ -1,14 +1,16 @@
 <!DOCTYPE html>
-<html lang="{{ lang or 'en' }}">
+<html lang="{{ lang or 'de' }}">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Token — OGX Oracle</title>
+  <meta name="csrf-token" content="{{ csrf_token }}">
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="/static/app.css" />
   <link rel="stylesheet" href="/static/login.css" />
   <link rel="icon" type="image/x-icon" href="/static/favicon.ico?v=2" />
+  <script>window.I18N = {{ i18n_js | tojson }};</script>
 </head>
 <body>
 
@@ -26,7 +28,6 @@
 
   <div class="login-card">
 
-    <!-- Header -->
     <div class="success-head">
       <div class="success-icon">✓</div>
       <div>
@@ -35,30 +36,72 @@
       </div>
     </div>
 
-    <!-- Token box -->
     <div class="token-box">
-      <div class="token-box-label">Bearer Token</div>
+      <div class="token-box-label">Bearer JWT Token</div>
       <textarea class="token-box-ta" id="token-ta" readonly spellcheck="false"></textarea>
       <div class="token-box-hint">Header: <span class="token-code">Authorization: Bearer &lt;token&gt;</span></div>
     </div>
 
-    <!-- Actions -->
     <div class="success-actions">
       <button class="login-btn" id="btn-copy" type="button">Token kopieren</button>
-      <a class="login-btn login-btn-ghost" href="/" id="btn-continue">Weiter zum Oracle →</a>
+      <a class="login-btn login-btn-ghost" href="/" id="btn-continue">Weiter zur App →</a>
     </div>
 
     <div class="success-copied" id="copied-msg">✓ Token kopiert!</div>
 
-    <!-- Collector hint -->
     <div class="collector-hint">
       <div class="collector-hint-title">// Collector-Script Setup</div>
       <div class="collector-hint-text">Rechtsklick auf den OGX Oracle Button im Spiel → Auth: Bearer JWT → Token einfügen</div>
     </div>
 
+    <div style="margin-top:14px;text-align:center;font-size:11px;color:#4b7a8a;">
+      ⚠ Token wird nur einmal angezeigt. Kopieren und sicher aufbewahren.
+    </div>
+
   </div>
 </div>
 
-<script src="/static/login_success.js"></script>
+<script>
+(function () {
+  const params   = new URLSearchParams(window.location.search);
+  const token    = params.get('t') || '';
+  const username = params.get('u') || '';
+  const next     = params.get('next') || '/';
+
+  const ta        = document.getElementById('token-ta');
+  const copyBtn   = document.getElementById('btn-copy');
+  const contBtn   = document.getElementById('btn-continue');
+  const copiedMsg = document.getElementById('copied-msg');
+  const titleEl   = document.getElementById('success-title');
+
+  if (ta)      ta.value = token;
+  if (username && titleEl) titleEl.textContent = 'Willkommen, ' + username;
+  if (contBtn) contBtn.href = next;
+
+  if (copyBtn) {
+    copyBtn.addEventListener('click', function () {
+      if (!token) return;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(token).then(showCopied).catch(fallback);
+      } else { fallback(); }
+    });
+  }
+
+  function fallback() {
+    if (!ta) return;
+    ta.select();
+    try { document.execCommand('copy'); showCopied(); } catch (e) {}
+  }
+
+  function showCopied() {
+    if (copyBtn) copyBtn.textContent = '✓ Kopiert!';
+    if (copiedMsg) copiedMsg.classList.add('visible');
+    setTimeout(function () {
+      if (copyBtn) copyBtn.textContent = 'Token kopieren';
+      if (copiedMsg) copiedMsg.classList.remove('visible');
+    }, 2000);
+  }
+})();
+</script>
 </body>
 </html>

@@ -29,15 +29,14 @@
     return m ? m.content : '';
   }
 
-  function getNext() {
-    return new URLSearchParams(window.location.search).get('next') || '/';
-  }
-
-  function onSuccess(token) {
-    // Save token to localStorage (same key auth.js uses)
+  function onSuccess(token, username) {
+    // Save to localStorage so app knows user is logged in
     localStorage.setItem('ogx_jwt', token);
-    // Go directly to destination - no intermediate success page
-    window.location.href = getNext();
+    // Go to success page to show token, then user clicks continue
+    const next = new URLSearchParams(window.location.search).get('next') || '/';
+    window.location.href = '/login/success?t=' + encodeURIComponent(token)
+      + '&u=' + encodeURIComponent(username)
+      + '&next=' + encodeURIComponent(next);
   }
 
   function doLogin() {
@@ -51,17 +50,17 @@
       headers: { 'Content-Type': 'application/json', 'x-csrf-token': getCsrf() },
       body: JSON.stringify({ username, password })
     })
-    .then(function (r) { return r.json(); })
-    .then(function (d) {
+    .then(r => r.json())
+    .then(d => {
       if (d.ok && d.token) {
-        onSuccess(d.token);
+        onSuccess(d.token, username);
       } else {
         showErr(d.detail || d.error || d.message || 'Login fehlgeschlagen.');
         btnLogin.disabled = false;
         btnLogin.textContent = window.I18N && window.I18N['auth.login'] || 'Login';
       }
     })
-    .catch(function () {
+    .catch(() => {
       showErr('Netzwerkfehler.');
       btnLogin.disabled = false;
       btnLogin.textContent = window.I18N && window.I18N['auth.login'] || 'Login';
@@ -79,17 +78,17 @@
       headers: { 'Content-Type': 'application/json', 'x-csrf-token': getCsrf() },
       body: JSON.stringify({ username, password })
     })
-    .then(function (r) { return r.json(); })
-    .then(function (d) {
+    .then(r => r.json())
+    .then(d => {
       if (d.ok && d.token) {
-        onSuccess(d.token);
+        onSuccess(d.token, username);
       } else {
         showErr(d.detail || d.error || d.message || 'Registrierung fehlgeschlagen.');
         btnRegister.disabled = false;
         btnRegister.textContent = window.I18N && window.I18N['auth.create_account'] || 'Account erstellen';
       }
     })
-    .catch(function () {
+    .catch(() => {
       showErr('Netzwerkfehler.');
       btnRegister.disabled = false;
       btnRegister.textContent = window.I18N && window.I18N['auth.create_account'] || 'Account erstellen';
