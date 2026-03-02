@@ -17,10 +17,11 @@ from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse,
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from starlette.middleware.proxy_headers import ProxyHeadersMiddleware
-
 from sqlalchemy import select, func, delete, text, update
 from sqlalchemy.orm import selectinload
+
+# FIX: removed starlette ProxyHeadersMiddleware import (not available in your stack)
+# Use uvicorn --proxy-headers in Procfile instead.
 
 from .db import engine, AsyncSessionLocal, IS_SQLITE, IS_POSTGRES
 from .models import Base, Player, Colony, GalaxyScan, User
@@ -57,7 +58,7 @@ templates.env.globals["now_utc"] = lambda: datetime.now(timezone.utc)
 async def lifespan(app: FastAPI):
     """
     Dev: create tables automatically (convenience).
-    Prod: never auto-create schema. Only verify DB connectivity.
+    Prod: verify DB connectivity + ensure tables exist.
     """
     if settings.env == "dev":
         async with engine.begin() as conn:
@@ -70,19 +71,14 @@ async def lifespan(app: FastAPI):
             await conn.run_sync(Base.metadata.create_all)
         async with AsyncSessionLocal() as db:
             await seed_achievements(db)
+
     yield
 
 
 app = FastAPI(title="OGX Oracle", lifespan=lifespan)
 
-# --- IMPORTANT: Behind Railway proxy, we must respect X-Forwarded-* headers
-# Otherwise request.url.scheme may be wrong (http), which can break Secure cookies / CSRF behavior in strict browsers.
-app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
-
-# Static
 app.mount("/static", StaticFiles(directory=str(APP_DIR / "static")), name="static")
 
-# CORS: GM_xmlhttpRequest does not require CORS.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["https://uni1.playogx.com", "http://uni1.playogx.com"],
@@ -98,7 +94,9 @@ app.add_middleware(CsrfMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RequestIdLoggingMiddleware)
 
-
+# ---------------------------------------------------------------------------
+# Source constants
+# ---------------------------------------------------------------------------
 SRC_MANUAL_ADD = "manual_add"
 SRC_MANUAL_EDIT = "manual_edit"
 SRC_IMPORT = "import"
@@ -108,18 +106,15 @@ DEFAULT_PLANET_NAME = "Colony"
 
 
 def _template(request: Request, name: str, ctx: dict) -> HTMLResponse:
-    """
-    Always provide csrf_token and i18n to templates.
-    """
     csrf_token = getattr(request.state, "csrf_token", None) or request.cookies.get(CSRF_COOKIE) or ""
     lang = get_lang(request)
     base = {
-        "request":    request,
+        "request": request,
         "csrf_token": csrf_token,
-        "t":          make_translator(lang),
-        "lang":       lang,
-        "i18n_js":    get_translations_js(lang),
-        "settings":   settings,
+        "t": make_translator(lang),
+        "lang": lang,
+        "i18n_js": get_translations_js(lang),
+        "settings": settings,
     }
     base.update(ctx)
     return templates.TemplateResponse(request, name, base)
@@ -222,6 +217,7 @@ async def _ensure_single_main(db, player_id: int, main_colony_id: int) -> None:
 async def _upsert_galaxy_scan(db, *, galaxy: int, system: int, scanned_at: datetime, planets_found: int) -> None:
     if IS_SQLITE:
         from sqlalchemy.dialects.sqlite import insert as _ins
+
         stmt = (
             _ins(GalaxyScan)
             .values(galaxy=galaxy, system=system, scanned_at=scanned_at, planets_found=planets_found)
@@ -235,6 +231,7 @@ async def _upsert_galaxy_scan(db, *, galaxy: int, system: int, scanned_at: datet
 
     if IS_POSTGRES:
         from sqlalchemy.dialects.postgresql import insert as _ins
+
         stmt = (
             _ins(GalaxyScan)
             .values(galaxy=galaxy, system=system, scanned_at=scanned_at, planets_found=planets_found)
@@ -266,11 +263,11 @@ async def api_prestige(request: Request):
         return JSONResponse({"ok": False, "error": "unauthorized"}, status_code=401)
     async with AsyncSessionLocal() as db:
         summary = await get_prestige_summary(db, int(u.id))
-        board   = await prestige_leaderboard(db, limit=20)
+        board = await prestige_leaderboard(db, limit=20)
         for entry in board:
             res = await db.execute(select(User).where(User.id == entry["user_id"]))
             usr = res.scalar_one_or_none()
-            entry["username"]        = usr.username if usr else f"user_{entry['user_id']}"
+            entry["username"] = usr.username if usr else f"user_{entry['user_id']}"
             entry["is_current_user"] = (entry["user_id"] == int(u.id))
         return JSONResponse({"ok": True, **summary, "leaderboard": board})
 
@@ -293,11 +290,7 @@ async def i18n_data_js(request: Request):
     import json
     content = "window.I18N = " + json.dumps(translations, ensure_ascii=False) + ";"
     from fastapi.responses import Response
-    return Response(
-        content=content,
-        media_type="application/javascript",
-        headers={"Cache-Control": "no-cache"},
-    )
+    return Response(content=content, media_type="application/javascript", headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/healthz")
@@ -319,52 +312,18 @@ async def readyz():
 # AUTH API (JWT)
 # ---------------------------------------------------------------------------
 
-async def _read_json_or_form(request: Request) -> dict:
-    """
-    Accept both:
-    - application/json
-    - application/x-www-form-urlencoded / multipart/form-data
-    This fixes "works on my PC but not on mobile" when the client sends a normal HTML form.
-    """
-    ctype = (request.headers.get("content-type") or "").lower()
-    if "application/json" in ctype:
-        try:
-            data = await request.json()
-            return data if isinstance(data, dict) else {}
-        except Exception:
-            return {}
-    # form fallback
-    try:
-        form = await request.form()
-        return dict(form)
-    except Exception:
-        return {}
-
-
-def _wants_json(request: Request) -> bool:
-    accept = (request.headers.get("accept") or "").lower()
-    ctype  = (request.headers.get("content-type") or "").lower()
-    return ("application/json" in accept) or ("application/json" in ctype) or (request.headers.get("x-requested-with") == "fetch")
-
-
 @app.post("/auth/register")
-async def auth_register(request: Request):
+async def auth_register(payload: dict = Body(...)):
     if not settings.allow_registration:
         return JSONResponse({"ok": False, "error": "registration_disabled"}, status_code=403)
 
-    payload = await _read_json_or_form(request)
     username = _norm_username(str(payload.get("username") or ""))
     password = str(payload.get("password") or "")
 
     if len(username) < settings.username_min_len or len(username) > settings.username_max_len:
-        if _wants_json(request):
-            return JSONResponse({"ok": False, "error": "invalid_username"}, status_code=400)
-        return RedirectResponse(url="/login?err=invalid_username", status_code=303)
-
+        return JSONResponse({"ok": False, "error": "invalid_username"}, status_code=400)
     if len(password) < settings.password_min_len:
-        if _wants_json(request):
-            return JSONResponse({"ok": False, "error": "password_too_short"}, status_code=400)
-        return RedirectResponse(url="/login?err=password_too_short", status_code=303)
+        return JSONResponse({"ok": False, "error": "password_too_short"}, status_code=400)
 
     async with AsyncSessionLocal() as db:
         make_admin = False
@@ -375,9 +334,7 @@ async def auth_register(request: Request):
 
         exists = await db.execute(select(User).where(User.username == username))
         if exists.scalar_one_or_none():
-            if _wants_json(request):
-                return JSONResponse({"ok": False, "error": "username_taken"}, status_code=409)
-            return RedirectResponse(url="/login?err=username_taken", status_code=303)
+            return JSONResponse({"ok": False, "error": "username_taken"}, status_code=409)
 
         u = User(
             username=username,
@@ -399,16 +356,11 @@ async def auth_register(request: Request):
         except Exception:
             pass
 
-        if _wants_json(request):
-            return {"ok": True, "token": token, "is_admin": u.is_admin, "username": u.username}
-
-        # HTML flow: redirect back to login with a hint (UI can display it)
-        return RedirectResponse(url="/login?registered=1", status_code=303)
+        return {"ok": True, "token": token, "is_admin": u.is_admin, "username": u.username}
 
 
 @app.post("/auth/login")
-async def auth_login(request: Request):
-    payload = await _read_json_or_form(request)
+async def auth_login(payload: dict = Body(...)):
     username = _norm_username(str(payload.get("username") or ""))
     password = str(payload.get("password") or "")
 
@@ -416,31 +368,17 @@ async def auth_login(request: Request):
         res = await db.execute(select(User).where(User.username == username))
         u = res.scalar_one_or_none()
         if not u:
-            if _wants_json(request):
-                return JSONResponse({"ok": False, "error": "invalid_login"}, status_code=401)
-            return RedirectResponse(url="/login?err=invalid_login", status_code=303)
-
+            return JSONResponse({"ok": False, "error": "invalid_login"}, status_code=401)
         if not u.is_active:
-            if _wants_json(request):
-                return JSONResponse({"ok": False, "error": "user_disabled"}, status_code=403)
-            return RedirectResponse(url="/login?err=user_disabled", status_code=303)
-
+            return JSONResponse({"ok": False, "error": "user_disabled"}, status_code=403)
         if not verify_password(password, u.password_hash):
-            if _wants_json(request):
-                return JSONResponse({"ok": False, "error": "invalid_login"}, status_code=401)
-            return RedirectResponse(url="/login?err=invalid_login", status_code=303)
+            return JSONResponse({"ok": False, "error": "invalid_login"}, status_code=401)
 
         u.last_login_at = _utcnow_naive()
         await db.commit()
 
         token = create_access_token(user=u)
-
-        if _wants_json(request):
-            return {"ok": True, "token": token, "is_admin": u.is_admin, "username": u.username}
-
-        # HTML flow: redirect to /login so the page JS can pick up token via XHR if needed.
-        # (Better: set cookie here — but that change belongs in security.py to keep auth source-of-truth consistent.)
-        return RedirectResponse(url="/login?logged_in=1", status_code=303)
+        return {"ok": True, "token": token, "is_admin": u.is_admin, "username": u.username}
 
 
 @app.get("/auth/me")
@@ -463,6 +401,7 @@ async def admin_delete_player(request: Request, player_id: int):
         _u, err = await require_jwt_user(request, db, require_admin=True)
         if err:
             return err
+
         await db.execute(delete(Player).where(Player.id == player_id))
         await db.commit()
         return {"ok": True}
@@ -474,6 +413,7 @@ async def admin_delete_colony(request: Request, colony_id: int):
         _u, err = await require_jwt_user(request, db, require_admin=True)
         if err:
             return err
+
         await db.execute(delete(Colony).where(Colony.id == colony_id))
         await db.commit()
         return {"ok": True}
@@ -490,7 +430,7 @@ async def prestige_page(request: Request):
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
-    # FIX: removed unreachable stray return/redirect in your original file
+    # NOTE: removed dead code redirect that was sitting below return
     return _template(request, "login.html", {})
 
 
@@ -566,6 +506,7 @@ async def import_ui(request: Request):
             "players": qp.get("players", "0"),
             "skipped": qp.get("skipped", "0"),
         }
+
     return _template(request, "import.html", {"summary": summary, "active_nav": "import"})
 
 
@@ -610,6 +551,10 @@ async def galaxy_system(request: Request, galaxy: int, system: int):
         {"galaxy": galaxy, "system": system, "scan": scan, "colonies": colonies, "active_nav": "galaxy"},
     )
 
+
+# ---------------------------------------------------------------------------
+# Actions (manual) — requires JWT (account)
+# ---------------------------------------------------------------------------
 
 async def _require_user_for_write(request: Request):
     async with AsyncSessionLocal() as db:
@@ -956,13 +901,7 @@ async def import_csv(request: Request, file: UploadFile = File(...)):
         fallback_now = _utcnow_naive()
         for (g, s), pos_set in gs_planets.items():
             scanned_at = gs_last_seen.get((g, s)) or fallback_now
-            await _upsert_galaxy_scan(
-                db,
-                galaxy=g,
-                system=s,
-                scanned_at=scanned_at,
-                planets_found=len(pos_set),
-            )
+            await _upsert_galaxy_scan(db, galaxy=g, system=s, scanned_at=scanned_at, planets_found=len(pos_set))
 
         await db.commit()
 
@@ -1037,7 +976,7 @@ async def export_csv():
 
 
 # ---------------------------------------------------------------------------
-# Ingest
+# Ingest (Helper Sync -> Local Tracker)
 # ---------------------------------------------------------------------------
 
 @app.post("/ingest/galaxy")
