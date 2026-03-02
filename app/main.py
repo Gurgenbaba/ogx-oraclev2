@@ -293,6 +293,19 @@ async def _upsert_galaxy_scan(db, *, galaxy: int, system: int, scanned_at: datet
     else:
         db.add(GalaxyScan(galaxy=galaxy, system=system, scanned_at=scanned_at, planets_found=planets_found))
 
+async def _get_ingest_user(request: Request, db) -> Optional[User]:
+    """
+    Resolve the user that performed the ingest, if we have a JWT Bearer.
+    If ingest happened via API key (no user identity), return None.
+    IMPORTANT: never fail ingest because of prestige/user resolution.
+    """
+    try:
+        u, err = await require_jwt_user(request, db, require_admin=False)
+        if err:
+            return None
+        return u
+    except Exception:
+        return None
 
 # ---------------------------------------------------------------------------
 # Health / Readiness
@@ -302,17 +315,20 @@ async def _upsert_galaxy_scan(db, *, galaxy: int, system: int, scanned_at: datet
 async def api_prestige(request: Request):
     """JSON prestige summary + leaderboard for the current JWT user."""
     async with AsyncSessionLocal() as db:
-        u, err = await _require_user_for_write(request, db)
+        u, err = await require_jwt_user(request, db)
         if err:
             return JSONResponse({"ok": False, "error": "unauthorized"}, status_code=401)
+
         summary = await get_prestige_summary(db, int(u.id))
         board   = await prestige_leaderboard(db, limit=20)
+
         # Enrich leaderboard with usernames + is_current_user flag
         for entry in board:
             res = await db.execute(select(User).where(User.id == entry["user_id"]))
             usr = res.scalar_one_or_none()
             entry["username"]        = usr.username if usr else f"user_{entry['user_id']}"
             entry["is_current_user"] = (entry["user_id"] == int(u.id))
+
         return JSONResponse({"ok": True, **summary, "leaderboard": board})
 
 
