@@ -131,6 +131,16 @@ def _template(request: Request, name: str, ctx: dict) -> HTMLResponse:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+@app.get("/i18n.js")
+async def i18n_js(request: Request):
+    """
+    Serve translations as external JS (CSP-safe).
+    This replaces any inline <script>{{ i18n_js }}</script> usage in templates.
+    """
+    lang = get_lang(request)
+    js = get_translations_js(lang)
+    return PlainTextResponse(js, media_type="application/javascript; charset=utf-8")
+
 def _utcnow_naive() -> datetime:
     """Single source of truth: store & compute times as naive UTC."""
     return datetime.now(timezone.utc).replace(tzinfo=None)
