@@ -6,49 +6,29 @@
   function t(key, fallback) { return I18N[key] || fallback || key; }
 
   var RANK_ICONS = {
-    "Grand Oracle":  "👑",
-    "High Oracle":   "🔮",
-    "Strategist":    "🧠",
-    "Commander":     "⚔️",
-    "Analyst":       "📊",
-    "Cadet":         "🪐",
+    "Grand Oracle": "👑", "High Oracle": "🔮", "Strategist": "🧠",
+    "Commander": "⚔️",  "Analyst": "📊",      "Cadet": "🪐",
   };
-
   var MEDALS = ["🥇","🥈","🥉"];
 
   function gel(id) { return document.getElementById(id); }
 
-  // Uses psg-hidden class (matches template) — NOT hidden attribute
-  function showState(state) {
-    ["loading","unauth","content"].forEach(function(s) {
-      var el = gel("psg-" + s);
-      if (!el) return;
-      if (s === state) { el.classList.remove("psg-hidden"); }
-      else             { el.classList.add("psg-hidden"); }
-    });
-  }
-
   function renderRankHero(s) {
-    var icon = RANK_ICONS[s.prestige_rank] || "🪐";
     var rankIcon  = gel("psg-rank-icon");
     var rankName  = gel("psg-rank-name");
     var totalOp   = gel("psg-total-op");
     var scanner   = gel("psg-scanner-title");
     var progFill  = gel("psg-prog-fill");
     var progLabel = gel("psg-prog-label");
-
-    if (rankIcon)  rankIcon.textContent  = icon;
+    if (rankIcon)  rankIcon.textContent  = RANK_ICONS[s.prestige_rank] || "🪐";
     if (rankName)  rankName.textContent  = s.prestige_rank || "Cadet";
     if (totalOp)   totalOp.textContent   = (s.total_op || 0).toLocaleString();
     if (scanner)   scanner.textContent   = s.scanner_title || "";
-
     var pct = Math.min(100, Math.max(0, s.progress_pct || 0));
     if (progFill)  progFill.style.setProperty("--prog-pct", pct + "%");
-    if (progLabel) {
-      progLabel.textContent = s.next_rank
-        ? (s.next_rank.op_needed + " OP " + t("prestige.until_next", "bis nächster Rang"))
-        : t("prestige.max_rank", "Maximaler Rang");
-    }
+    if (progLabel) progLabel.textContent = s.next_rank
+      ? (s.next_rank.op_needed + " OP " + t("prestige.until_next", "bis nächster Rang"))
+      : t("prestige.max_rank", "Maximaler Rang");
   }
 
   function renderStats(s) {
@@ -65,21 +45,16 @@
   function makeAchItem(a, unlocked) {
     var div  = document.createElement("div");
     div.className = "psg-ach-item" + (unlocked ? " unlocked" : "");
-
     var icon = document.createElement("div");
     icon.className = "psg-ach-icon";
     icon.textContent = a.icon || "★";
-
     var body = document.createElement("div");
-
     var name = document.createElement("div");
     name.className = "psg-ach-name";
     name.textContent = a.name || "";
-
     var desc = document.createElement("div");
     desc.className = "psg-ach-desc";
     desc.textContent = a.description || "";
-
     body.appendChild(name);
     body.appendChild(desc);
     div.appendChild(icon);
@@ -91,7 +66,6 @@
     var uGrid  = gel("psg-ach-unlocked");
     var lGrid  = gel("psg-ach-locked");
     var lTitle = gel("psg-ach-locked-title");
-
     if (uGrid) {
       uGrid.innerHTML = "";
       if (unlocked && unlocked.length) {
@@ -103,13 +77,9 @@
         uGrid.appendChild(p);
       }
     }
-
     if (locked && locked.length) {
       if (lTitle) lTitle.textContent = t("prestige.next_achievements", "Nächste Achievements:");
-      if (lGrid) {
-        lGrid.innerHTML = "";
-        locked.forEach(function(a) { lGrid.appendChild(makeAchItem(a, false)); });
-      }
+      if (lGrid) { lGrid.innerHTML = ""; locked.forEach(function(a) { lGrid.appendChild(makeAchItem(a, false)); }); }
     } else {
       if (lTitle) lTitle.textContent = "";
     }
@@ -122,80 +92,42 @@
     if (!board || !board.length) {
       var tr = document.createElement("tr");
       var td = document.createElement("td");
-      td.colSpan = 4;
-      td.className = "muted";
+      td.colSpan = 4; td.className = "muted";
       td.textContent = t("prestige.no_data", "Keine Daten.");
-      tr.appendChild(td);
-      tbody.appendChild(tr);
-      return;
+      tr.appendChild(td); tbody.appendChild(tr); return;
     }
-
     board.forEach(function(row) {
       var tr = document.createElement("tr");
       if (row.is_current_user) tr.className = "psg-lb-me";
-
       var tdRank = document.createElement("td");
-      if (row.rank <= 3) {
-        var span = document.createElement("span");
-        span.className = "psg-lb-medal";
-        span.textContent = MEDALS[row.rank - 1];
-        tdRank.appendChild(span);
-      } else {
-        tdRank.textContent = row.rank;
-      }
-
+      if (row.rank <= 3) { var sp = document.createElement("span"); sp.className = "psg-lb-medal"; sp.textContent = MEDALS[row.rank-1]; tdRank.appendChild(sp); }
+      else tdRank.textContent = row.rank;
       var tdUser = document.createElement("td");
       tdUser.textContent = (row.is_current_user ? "→ " : "") + (row.username || "?");
-
-      var tdPrestige = document.createElement("td");
-      tdPrestige.textContent = (RANK_ICONS[row.prestige_rank] || "") + " " + (row.prestige_rank || "Cadet");
-
+      var tdP = document.createElement("td");
+      tdP.textContent = (RANK_ICONS[row.prestige_rank] || "") + " " + (row.prestige_rank || "Cadet");
       var tdOp = document.createElement("td");
       tdOp.textContent = (row.total_op || 0).toLocaleString();
-
-      tr.appendChild(tdRank);
-      tr.appendChild(tdUser);
-      tr.appendChild(tdPrestige);
-      tr.appendChild(tdOp);
+      tr.appendChild(tdRank); tr.appendChild(tdUser); tr.appendChild(tdP); tr.appendChild(tdOp);
       tbody.appendChild(tr);
     });
   }
 
   function load() {
-    showState("loading");
     var token = localStorage.getItem("ogx_jwt");
-    if (!token) { showState("unauth"); return; }
-
-    fetch("/api/prestige", {
-      headers: { "Authorization": "Bearer " + token }
-    })
-    .then(function(r) {
-      if (r.status === 401) { showState("unauth"); throw new Error("unauth"); }
-      if (!r.ok) throw new Error("server_error_" + r.status);
-      return r.json();
-    })
+    if (!token) return;  // not logged in — nothing to do, page is static
+    fetch("/api/prestige", { headers: { "Authorization": "Bearer " + token } })
+    .then(function(r) { return r.ok ? r.json() : null; })
     .then(function(d) {
-      if (!d || !d.ok) { showState("unauth"); return; }
+      if (!d || !d.ok) return;
       renderRankHero(d);
       renderStats(d);
       renderAchievements(d.achievements_unlocked, d.achievements_locked);
       renderLeaderboard(d.leaderboard);
-      showState("content");
-    })
-    .catch(function(err) {
-      if (err && err.message === "unauth") return;
-      showState("loading");
-      var el = gel("psg-loading");
-      if (el) {
-        el.className = "psg-state psg-error";
-        el.textContent = "⚠ " + t("prestige.loading", "Laden") + " — " + (err && err.message ? err.message : "Fehler");
-      }
     });
   }
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", load);
-  } else {
-    load();
-  }
+  } else { load(); }
 })();

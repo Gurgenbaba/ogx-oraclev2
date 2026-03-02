@@ -9,22 +9,14 @@
     <h1 class="psg-page-title">🏆 {{ t('prestige.title') }}</h1>
     <a href="/" class="psg-back">← {{ t('nav.search') }}</a>
   </div>
-
-  <!-- Loading state -->
-  <div id="psg-loading" class="psg-state">
-    <div class="psg-spinner"></div>
-    <div class="psg-loading-text">{{ t('prestige.loading') }}</div>
+<div class="psg-loading-text">{{ t('prestige.loading') }}</div>
   </div>
-
-  <!-- Unauthenticated state -->
-  <div id="psg-unauth" class="psg-state psg-hidden">
-    <div class="psg-unauth-icon">🔒</div>
-    <p>{{ t('prestige.login_required') }}</p>
+<p>{{ t('prestige.login_required') }}</p>
     <a href="/login?next=/prestige" class="btn btn-sm psg-login-btn">{{ t('auth.login') }}</a>
   </div>
 
   <!-- Main content — populated by prestige.js -->
-  <div id="psg-content" class="psg-hidden">
+  <div id="psg-content">
 
     <!-- Hero: rank + OP -->
     <div class="psg-hero" id="psg-hero">
