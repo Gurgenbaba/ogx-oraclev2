@@ -516,6 +516,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # - in prod you can optionally enforce upgrade-insecure-requests
         upgrade = " upgrade-insecure-requests;" if settings.env == "prod" and os.getenv("OGX_CSP_UPGRADE_INSECURE") == "1" else ""
 
+        # NOTE:
+        # - We keep script-src strict (no inline).
+        # - We allow inline styles because the UI uses style attributes + JS style mutations.
+        #   (Without 'unsafe-inline' for style-src, modern UIs break.)
         if settings.csp_mode == "strict":
             csp = (
                 "default-src 'none';"
@@ -524,8 +528,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 " frame-ancestors 'none';"
                 " object-src 'none';"
                 " img-src 'self';"
-                " style-src 'self';"
-                " font-src 'self';"
+                " style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;"
+                " font-src 'self' https://fonts.gstatic.com;"
                 " script-src 'self';"
                 " connect-src 'self';"
                 + upgrade
@@ -538,7 +542,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 " frame-ancestors 'none';"
                 " object-src 'none';"
                 " img-src 'self' data:;"
-                " style-src 'self' https://fonts.googleapis.com;"
+                " style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;"
                 " font-src 'self' https://fonts.gstatic.com;"
                 " script-src 'self';"
                 " connect-src 'self';"
@@ -546,5 +550,4 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             )
 
         resp.headers["Content-Security-Policy"] = csp
-
         return resp
