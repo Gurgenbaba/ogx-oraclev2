@@ -20,8 +20,6 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import select, func, delete, text, update
 from sqlalchemy.orm import selectinload
 
-# FIX: removed duplicate absolute import (from app.db import engine / from app.models import Base).
-# Only relative imports below.
 from .db import engine, AsyncSessionLocal, IS_SQLITE, IS_POSTGRES
 from .models import Base, Player, Colony, GalaxyScan, User
 from .prestige import (
@@ -49,7 +47,6 @@ from .security import (
 
 APP_DIR = Path(__file__).resolve().parent
 
-# Templates MUST exist before lifespan uses them
 templates = Jinja2Templates(directory=str(APP_DIR / "templates"))
 templates.env.globals["now_utc"] = lambda: datetime.now(timezone.utc)
 
@@ -69,10 +66,8 @@ async def lifespan(app: FastAPI):
         async with AsyncSessionLocal() as db:
             await seed_achievements(db)
     else:
-        # prod: verify DB reachable, then ensure prestige tables + achievements exist
         async with engine.begin() as conn:
             await conn.execute(text("SELECT 1"))
-            # Create any missing tables (safe: checkfirst=True via create_all)
             await conn.run_sync(Base.metadata.create_all)
         async with AsyncSessionLocal() as db:
             await seed_achievements(db)
@@ -87,26 +82,21 @@ app.mount("/static", StaticFiles(directory=str(APP_DIR / "static")), name="stati
 
 # CORS:
 # NOTE: GM_xmlhttpRequest does not require CORS.
-# Keep minimal anyway for any browser-based fetch.
+# But browser fetch from uni tab DOES.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["https://uni1.playogx.com", "http://uni1.playogx.com"],
     allow_credentials=False,
-    allow_methods=["POST", "OPTIONS"],
+    allow_methods=["GET", "POST", "OPTIONS"],  # FIX: include GET for /api/prestige & /api/leaderboard
     allow_headers=["content-type", "x-ogx-api-key", "authorization", "x-csrf-token"],
 )
 
 # Security middlewares (order matters!)
-# Goal: RequestId + SecurityHeaders should be present even for early rejects (413/429/403).
-# Starlette middleware stack runs "outermost" last-added.
 app.add_middleware(MaxSizeMiddleware)
 app.add_middleware(SimpleRateLimitMiddleware)
 app.add_middleware(CsrfMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RequestIdLoggingMiddleware)
-
-# FIX: Removed @app.on_event("startup") block — it was deprecated, conflicted with
-# lifespan(), and bypassed the intentional prod guard (ran create_all in prod).
 
 
 # ---------------------------------------------------------------------------
@@ -117,7 +107,6 @@ SRC_MANUAL_EDIT = "manual_edit"
 SRC_IMPORT = "import"
 SRC_HELPER = "helper"
 
-# Default planet name (English)
 DEFAULT_PLANET_NAME = "Colony"
 
 
@@ -128,12 +117,12 @@ def _template(request: Request, name: str, ctx: dict) -> HTMLResponse:
     csrf_token = getattr(request.state, "csrf_token", None) or request.cookies.get(CSRF_COOKIE) or ""
     lang = get_lang(request)
     base = {
-        "request":   request,
+        "request": request,
         "csrf_token": csrf_token,
-        "t":         make_translator(lang),
-        "lang":      lang,
-        "i18n_js":   get_translations_js(lang),
-        "settings":  settings,
+        "t": make_translator(lang),
+        "lang": lang,
+        "i18n_js": get_translations_js(lang),
+        "settings": settings,
     }
     base.update(ctx)
     return templates.TemplateResponse(request, name, base)
@@ -179,9 +168,7 @@ def _to_int_or_none(v: Any) -> Optional[int]:
 
 
 def _norm_username(u: str) -> str:
-    """
-    Normalize username consistently (DB expects this form).
-    """
+    """Normalize username consistently (DB expects this form)."""
     return (u or "").strip().lower()
 
 
@@ -228,17 +215,11 @@ def _sort_colonies(colonies: list[Colony]) -> list[Colony]:
 
 
 async def _ensure_single_main(db, player_id: int, main_colony_id: int) -> None:
-    """
-    FIX: Use targeted UPDATE instead of loading all colonies into memory.
-    Only updates rows where is_main needs to change, avoiding unnecessary bulk UPDATEs.
-    """
-    # Clear is_main on all OTHER colonies for this player
     await db.execute(
         update(Colony)
         .where(Colony.player_id == player_id, Colony.id != main_colony_id)
         .values(is_main=False)
     )
-    # Ensure the target colony is marked main
     await db.execute(
         update(Colony)
         .where(Colony.id == main_colony_id)
@@ -247,15 +228,6 @@ async def _ensure_single_main(db, player_id: int, main_colony_id: int) -> None:
 
 
 async def _upsert_galaxy_scan(db, *, galaxy: int, system: int, scanned_at: datetime, planets_found: int) -> None:
-    """
-    Dialect-safe UPSERT for GalaxyScan.
-    - SQLite: uses sqlite dialect insert..on_conflict_do_update
-    - Postgres: uses postgres dialect insert..on_conflict_do_update
-    - Other: fallback select/update
-
-    FIX: db.bind is always None in SQLAlchemy 2.x async sessions.
-    Use IS_SQLITE / IS_POSTGRES from db.py instead.
-    """
     if IS_SQLITE:
         from sqlalchemy.dialects.sqlite import insert as _ins
 
@@ -284,7 +256,6 @@ async def _upsert_galaxy_scan(db, *, galaxy: int, system: int, scanned_at: datet
         await db.execute(stmt)
         return
 
-    # Generic ORM fallback (other dialects)
     res = await db.execute(select(GalaxyScan).where(GalaxyScan.galaxy == galaxy, GalaxyScan.system == system))
     row = res.scalar_one_or_none()
     if row:
@@ -293,19 +264,6 @@ async def _upsert_galaxy_scan(db, *, galaxy: int, system: int, scanned_at: datet
     else:
         db.add(GalaxyScan(galaxy=galaxy, system=system, scanned_at=scanned_at, planets_found=planets_found))
 
-async def _get_ingest_user(request: Request, db) -> Optional[User]:
-    """
-    Resolve the user that performed the ingest, if we have a JWT Bearer.
-    If ingest happened via API key (no user identity), return None.
-    IMPORTANT: never fail ingest because of prestige/user resolution.
-    """
-    try:
-        u, err = await require_jwt_user(request, db, require_admin=False)
-        if err:
-            return None
-        return u
-    except Exception:
-        return None
 
 # ---------------------------------------------------------------------------
 # Health / Readiness
@@ -320,13 +278,12 @@ async def api_prestige(request: Request):
             return JSONResponse({"ok": False, "error": "unauthorized"}, status_code=401)
 
         summary = await get_prestige_summary(db, int(u.id))
-        board   = await prestige_leaderboard(db, limit=20)
+        board = await prestige_leaderboard(db, limit=20)
 
-        # Enrich leaderboard with usernames + is_current_user flag
         for entry in board:
             res = await db.execute(select(User).where(User.id == entry["user_id"]))
             usr = res.scalar_one_or_none()
-            entry["username"]        = usr.username if usr else f"user_{entry['user_id']}"
+            entry["username"] = usr.username if usr else f"user_{entry['user_id']}"
             entry["is_current_user"] = (entry["user_id"] == int(u.id))
 
         return JSONResponse({"ok": True, **summary, "leaderboard": board})
@@ -337,7 +294,6 @@ async def api_leaderboard(request: Request):
     """Top 20 leaderboard — public."""
     async with AsyncSessionLocal() as db:
         board = await prestige_leaderboard(db, limit=20)
-        # Enrich with usernames
         for entry in board:
             res = await db.execute(select(User).where(User.id == entry["user_id"]))
             usr = res.scalar_one_or_none()
@@ -352,10 +308,6 @@ async def healthz():
 
 @app.get("/readyz")
 async def readyz():
-    """
-    Readiness = DB reachable.
-    Useful for prod deploys (Railway/Render/K8s).
-    """
     try:
         async with engine.begin() as conn:
             await conn.execute(text("SELECT 1"))
@@ -403,13 +355,14 @@ async def auth_register(payload: dict = Body(...)):
         await db.refresh(u)
 
         token = create_access_token(user=u)
-        # Award daily login OP
+
         try:
             async with AsyncSessionLocal() as prestige_db:
                 await prestige_login(prestige_db, int(u.id), "oracle")
                 await prestige_db.commit()
         except Exception:
             pass
+
         return {"ok": True, "token": token, "is_admin": u.is_admin, "username": u.username}
 
 
@@ -454,7 +407,6 @@ async def admin_delete_player(request: Request, player_id: int):
         _u, err = await require_jwt_user(request, db, require_admin=True)
         if err:
             return err
-
         await db.execute(delete(Player).where(Player.id == player_id))
         await db.commit()
         return {"ok": True}
@@ -466,7 +418,6 @@ async def admin_delete_colony(request: Request, colony_id: int):
         _u, err = await require_jwt_user(request, db, require_admin=True)
         if err:
             return err
-
         await db.execute(delete(Colony).where(Colony.id == colony_id))
         await db.commit()
         return {"ok": True}
@@ -475,10 +426,8 @@ async def admin_delete_colony(request: Request, colony_id: int):
 # ---------------------------------------------------------------------------
 # Pages (READ for all)
 # ---------------------------------------------------------------------------
-
 @app.get("/prestige", response_class=HTMLResponse)
 async def prestige_page(request: Request):
-    """Oracle Prestige profile page — client-side auth via /api/prestige."""
     return _template(request, "prestige.html", {"active_nav": "prestige"})
 
 
@@ -558,7 +507,6 @@ async def import_ui(request: Request):
     qp = request.query_params
     summary = None
 
-    # show summary if at least one value is present
     if any(k in qp for k in ("imported", "updated", "players", "skipped")):
         summary = {
             "imported": qp.get("imported", "0"),
@@ -614,7 +562,6 @@ async def galaxy_system(request: Request, galaxy: int, system: int):
 
 # ---------------------------------------------------------------------------
 # Actions (manual) — requires JWT (account)
-# CSRF is validated by middleware, but not a replacement for auth.
 # ---------------------------------------------------------------------------
 async def _require_user_for_write(request: Request, db=None):
     """
@@ -622,7 +569,6 @@ async def _require_user_for_write(request: Request, db=None):
 
     - If `db` is provided (AsyncSession), reuse it.
     - Otherwise create a short-lived session.
-    This avoids nested sessions and allows endpoints to control transactions.
     """
     if db is not None:
         u, err = await require_jwt_user(request, db, require_admin=False)
@@ -635,189 +581,6 @@ async def _require_user_for_write(request: Request, db=None):
         if err:
             return None, err
         return u, None
-
-
-@app.post("/player/add")
-async def add_player(request: Request, name: str = Form(...)):
-    _u, err = await _require_user_for_write(request)
-    if err:
-        return err
-
-    name = _norm_name(name)
-    if not name:
-        return RedirectResponse(url="/", status_code=303)
-
-    async with AsyncSessionLocal() as db:
-        exists = await db.execute(select(Player).where(Player.name == name))
-        if exists.scalar_one_or_none():
-            return RedirectResponse(url=f"/player/{name}", status_code=303)
-
-        db.add(Player(name=name))
-        await db.commit()
-
-    return RedirectResponse(url=f"/player/{name}", status_code=303)
-
-
-@app.post("/player/{name}/astro")
-async def set_astro(request: Request, name: str, astro_level: int = Form(...)):
-    _u, err = await _require_user_for_write(request)
-    if err:
-        return err
-
-    name = _norm_name(name)
-    astro_level = int(astro_level)
-    if astro_level < 0 or astro_level > 200:
-        return RedirectResponse(url=f"/player/{name}", status_code=303)
-
-    async with AsyncSessionLocal() as db:
-        res = await db.execute(select(Player).where(Player.name == name))
-        p = res.scalar_one_or_none()
-        if not p:
-            return RedirectResponse(url="/?q=" + name, status_code=303)
-
-        p.astro_level = astro_level
-        await db.commit()
-
-    return RedirectResponse(url=f"/player/{name}", status_code=303)
-
-
-@app.post("/colony/add")
-async def add_colony(
-    request: Request,
-    player_name: str = Form(...),
-    galaxy: int = Form(...),
-    system: int = Form(...),
-    position: int = Form(...),
-    planet_name: str = Form(DEFAULT_PLANET_NAME),  # FIX: was "Colonie"
-    is_main: bool = Form(False),
-    has_moon: bool = Form(False),
-    moon_name: Optional[str] = Form(None),
-    travel_hint_minutes: Optional[int] = Form(None),
-    note: Optional[str] = Form(None),
-):
-    _u, err = await _require_user_for_write(request)
-    if err:
-        return err
-
-    player_name = _norm_name(player_name)
-    planet_name = (planet_name or DEFAULT_PLANET_NAME).strip() or DEFAULT_PLANET_NAME  # FIX: was "Colonie"
-    note = (note or "").strip() or None
-    moon_name = (moon_name or "").strip() or None
-
-    async with AsyncSessionLocal() as db:
-        p, _created = await get_or_create_player(db, player_name)
-
-        stmt = select(Colony).where(
-            Colony.player_id == p.id,
-            Colony.galaxy == galaxy,
-            Colony.system == system,
-            Colony.position == position,
-        )
-        existing = (await db.execute(stmt)).scalar_one_or_none()
-
-        now = _utcnow_naive()
-
-        if existing:
-            existing.planet_name = planet_name
-            existing.is_main = bool(is_main)
-            existing.has_moon = bool(has_moon)
-            existing.moon_name = moon_name if has_moon else None
-            existing.travel_hint_minutes = travel_hint_minutes
-            existing.note = note
-            existing.last_seen_at = now
-            existing.source = SRC_MANUAL_EDIT
-            if existing.is_main:
-                await _ensure_single_main(db, p.id, existing.id)
-        else:
-            c = Colony(
-                player_id=p.id,
-                galaxy=galaxy,
-                system=system,
-                position=position,
-                planet_name=planet_name,
-                is_main=bool(is_main),
-                has_moon=bool(has_moon),
-                moon_name=moon_name if has_moon else None,
-                travel_hint_minutes=travel_hint_minutes,
-                note=note,
-                last_seen_at=now,
-                source=SRC_MANUAL_ADD,
-            )
-            db.add(c)
-            await db.flush()
-            if c.is_main:
-                await _ensure_single_main(db, p.id, c.id)
-
-        await db.commit()
-
-    return RedirectResponse(url=f"/player/{player_name}", status_code=303)
-
-
-@app.post("/colony/{colony_id}/update")
-async def update_colony(
-    request: Request,
-    colony_id: int,
-    player_name: str = Form(...),
-    planet_name: str = Form(DEFAULT_PLANET_NAME),  # FIX: was "Colonie"
-    is_main: bool = Form(False),
-    has_moon: bool = Form(False),
-    moon_name: Optional[str] = Form(None),
-    travel_hint_minutes: Optional[int] = Form(None),
-    note: Optional[str] = Form(None),
-):
-    _u, err = await _require_user_for_write(request)
-    if err:
-        return err
-
-    player_name = _norm_name(player_name)
-    planet_name = (planet_name or DEFAULT_PLANET_NAME).strip() or DEFAULT_PLANET_NAME  # FIX: was "Colonie"
-    note = (note or "").strip() or None
-    moon_name = (moon_name or "").strip() or None
-
-    async with AsyncSessionLocal() as db:
-        res = await db.execute(select(Colony).where(Colony.id == colony_id).options(selectinload(Colony.player)))
-        c = res.scalar_one_or_none()
-        if not c:
-            return RedirectResponse(url=f"/player/{player_name}", status_code=303)
-
-        c.planet_name = planet_name
-        c.is_main = bool(is_main)
-        c.has_moon = bool(has_moon)
-        c.moon_name = moon_name if has_moon else None
-        c.travel_hint_minutes = travel_hint_minutes
-        c.note = note
-        c.last_seen_at = _utcnow_naive()
-        c.source = SRC_MANUAL_EDIT
-
-        if c.is_main:
-            await _ensure_single_main(db, c.player_id, c.id)
-
-        await db.commit()
-
-    return RedirectResponse(url=f"/player/{player_name}", status_code=303)
-
-
-@app.post("/colony/{colony_id}/delete")
-async def delete_colony(request: Request, colony_id: int, player_name: str = Form(...)):
-    _u, err = await _require_user_for_write(request)
-    if err:
-        return err
-
-    async with AsyncSessionLocal() as db:
-        res = await db.execute(select(Colony).where(Colony.id == colony_id))
-        c = res.scalar_one_or_none()
-        if not c:
-            return RedirectResponse(url=f"/player/{player_name}", status_code=303)
-
-        pid = c.player_id
-        await db.delete(c)
-        await db.flush()
-        deleted = await _delete_player_if_no_colonies(db, pid)
-        await db.commit()
-
-        if deleted:
-            return RedirectResponse(url="/?q=" + player_name, status_code=303)
-        return RedirectResponse(url=f"/player/{player_name}", status_code=303)
 
 
 # ---------------------------------------------------------------------------
@@ -836,242 +599,10 @@ async def _read_upload_limited(file: UploadFile, limit: int) -> bytes:
     return bytes(data)
 
 
-@app.post("/import")
-async def import_csv(request: Request, file: UploadFile = File(...)):
-    _u, err = await _require_user_for_write(request)
-    if err:
-        return err
-
-    try:
-        raw = await _read_upload_limited(file, settings.max_upload_bytes)
-    except ValueError:
-        return PlainTextResponse("upload too large", status_code=413)
-
-    # FIX: renamed from `text` to `csv_text` to avoid shadowing SQLAlchemy's `text()` import
-    csv_text = raw.decode("utf-8-sig", errors="replace")
-    reader = csv.DictReader(io.StringIO(csv_text))
-
-    imported = 0
-    updated = 0
-    created_players = 0
-    rows_seen = 0
-    rows_skipped = 0
-
-    # (g,s) -> set(positions)
-    gs_planets = defaultdict(set)
-    # (g,s) -> newest naive UTC timestamp
-    gs_last_seen: dict[tuple[int, int], datetime] = {}
-
-    def _parse_dt(v: Any) -> Optional[datetime]:
-        """
-        Accept ISO timestamps like:
-        - 2026-02-23T02:26:57.524665
-        - 2026-02-23T02:26:57.524665Z
-        - 2026-02-23T02:26:57+00:00
-        Returns naive UTC datetime (tz stripped), matching app storage.
-        """
-        try:
-            s = (str(v or "")).strip()
-            if not s:
-                return None
-            if s.endswith("Z"):
-                s = s[:-1] + "+00:00"
-            dt = datetime.fromisoformat(s)
-            if dt.tzinfo is not None:
-                dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
-            return dt
-        except Exception:
-            return None
-
-    async with AsyncSessionLocal() as db:
-        for row in reader:
-            rows_seen += 1
-            if rows_seen > settings.max_csv_rows:
-                return PlainTextResponse("too many rows", status_code=413)
-
-            # Normalize player like ingest
-            player_name = _norm_player_name(row.get("player") or row.get("name") or "")[:64]
-            if not player_name:
-                rows_skipped += 1
-                continue
-
-            # coords
-            try:
-                galaxy = int(str(row.get("galaxy") or row.get("g") or "0").strip() or 0)
-                system = int(str(row.get("system") or row.get("s") or "0").strip() or 0)
-                position = int(str(row.get("position") or row.get("pos") or "0").strip() or 0)
-            except Exception:
-                rows_skipped += 1
-                continue
-
-            # strict validation
-            if galaxy <= 0 or system <= 0 or position < 1 or position > 30:
-                rows_skipped += 1
-                continue
-
-            # Track GalaxyScan from CSV
-            gs_key = (galaxy, system)
-            gs_planets[gs_key].add(position)
-
-            seen_from_csv = _parse_dt(row.get("last_seen_at"))
-            if seen_from_csv is not None:
-                prev = gs_last_seen.get(gs_key)
-                if prev is None or seen_from_csv > prev:
-                    gs_last_seen[gs_key] = seen_from_csv
-
-            # fields
-            # FIX: default fallback changed from "Colonie" to DEFAULT_PLANET_NAME ("Colony")
-            planet_name = (row.get("planet_name") or row.get("planet") or DEFAULT_PLANET_NAME).strip()
-            planet_name = (planet_name[: settings.max_field_len] or DEFAULT_PLANET_NAME)
-
-            is_main = _to_bool(row.get("is_main"))
-            hint = _to_int_or_none(row.get("travel_hint_minutes"))
-
-            note = (row.get("note") or "").strip()
-            note = (note[: settings.max_field_len] or None)
-
-            has_moon = _to_bool(row.get("has_moon"))
-            moon_name = (row.get("moon_name") or "").strip()
-            moon_name = (moon_name[: settings.max_field_len] or None)
-
-            ally = (row.get("ally") or "").strip()
-            ally = (ally[:32] or None)
-
-            # Keep timestamp if present, else now
-            seen = seen_from_csv or _utcnow_naive()
-
-            p, created = await get_or_create_player(db, player_name)
-            if created:
-                created_players += 1
-
-            stmt = select(Colony).where(
-                Colony.player_id == p.id,
-                Colony.galaxy == galaxy,
-                Colony.system == system,
-                Colony.position == position,
-            )
-            existing = (await db.execute(stmt)).scalar_one_or_none()
-
-            if existing:
-                existing.planet_name = planet_name
-                existing.is_main = bool(is_main)
-                existing.ally = ally
-                existing.travel_hint_minutes = hint
-                existing.note = note
-                existing.has_moon = bool(has_moon)
-                existing.moon_name = moon_name if has_moon else None
-                existing.last_seen_at = seen
-                existing.source = SRC_IMPORT
-
-                if existing.is_main:
-                    await _ensure_single_main(db, p.id, existing.id)
-                updated += 1
-            else:
-                c = Colony(
-                    player_id=p.id,
-                    galaxy=galaxy,
-                    system=system,
-                    position=position,
-                    planet_name=planet_name,
-                    is_main=bool(is_main),
-                    ally=ally,
-                    has_moon=bool(has_moon),
-                    moon_name=moon_name if has_moon else None,
-                    travel_hint_minutes=hint,
-                    note=note,
-                    last_seen_at=seen,
-                    source=SRC_IMPORT,
-                )
-                db.add(c)
-                await db.flush()
-                if c.is_main:
-                    await _ensure_single_main(db, p.id, c.id)
-                imported += 1
-
-        # Build GalaxyScan entries from CSV (so /galaxy works immediately)
-        fallback_now = _utcnow_naive()
-        for (g, s), pos_set in gs_planets.items():
-            scanned_at = gs_last_seen.get((g, s)) or fallback_now
-            await _upsert_galaxy_scan(
-                db,
-                galaxy=g,
-                system=s,
-                scanned_at=scanned_at,
-                planets_found=len(pos_set),
-            )
-
-        await db.commit()
-
-    return RedirectResponse(
-        url=f"/import-ui?imported={imported}&updated={updated}&players={created_players}&skipped={rows_skipped}",
-        status_code=303,
-    )
-
-
-@app.get("/export.csv")
-async def export_csv():
-    async with AsyncSessionLocal() as db:
-        stmt = (
-            select(Colony, Player)
-            .join(Player, Player.id == Colony.player_id)
-            .order_by(Player.name, Colony.galaxy, Colony.system, Colony.position)
-        )
-        res = await db.execute(stmt)
-        rows = res.all()
-
-    def gen():
-        out = io.StringIO()
-        w = csv.writer(out)
-        w.writerow(
-            [
-                "player",
-                "galaxy",
-                "system",
-                "position",
-                "planet_name",
-                "is_main",
-                "has_moon",
-                "moon_name",
-                "travel_hint_minutes",
-                "note",
-                "last_seen_at",
-                "source",
-                "ally",
-            ]
-        )
-        yield out.getvalue()
-        out.seek(0)
-        out.truncate(0)
-
-        for c, p in rows:
-            w.writerow(
-                [
-                    p.name,
-                    c.galaxy,
-                    c.system,
-                    c.position,
-                    c.planet_name,
-                    "true" if c.is_main else "false",
-                    "true" if c.has_moon else "false",
-                    c.moon_name or "",
-                    c.travel_hint_minutes if c.travel_hint_minutes is not None else "",
-                    c.note or "",
-                    c.last_seen_at.isoformat() if c.last_seen_at else "",
-                    c.source,
-                    c.ally or "",
-                ]
-            )
-            yield out.getvalue()
-            out.seek(0)
-            out.truncate(0)
-
-    return StreamingResponse(
-        gen(),
-        media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=ogx-export.csv"},
-    )
-
-async def _get_ingest_user(request: Request, db):
+# ---------------------------------------------------------------------------
+# Ingest user resolver (single source of truth)  ✅ FIX: only defined ONCE
+# ---------------------------------------------------------------------------
+async def _get_ingest_user(request: Request, db) -> Optional[User]:
     """
     Resolve the user behind an ingest request.
 
@@ -1093,25 +624,24 @@ async def _get_ingest_user(request: Request, db):
 
     # 2) Optional API-key fallback
     api_key = request.headers.get("x-ogx-api-key") or ""
-    cfg_key = getattr(settings, "ingest_api_key", None)  # might not exist in older settings
+    cfg_key = getattr(settings, "ingest_api_key", None)
     if not cfg_key or api_key != cfg_key:
         return None
 
-    # Map API-key requests to a configured user id if available
     cfg_uid = getattr(settings, "ingest_user_id", None)
     try:
         if cfg_uid is not None:
             res = await db.execute(select(User).where(User.id == int(cfg_uid), User.is_active == True))
             return res.scalar_one_or_none()
 
-        # fallback: first active admin (or None if none exists)
         res = await db.execute(
             select(User).where(User.is_active == True, User.is_admin == True).order_by(User.id.asc()).limit(1)
         )
         return res.scalar_one_or_none()
     except Exception:
         return None
-        
+
+
 # ---------------------------------------------------------------------------
 # Ingest (Helper Sync -> Local Tracker)
 # JWT Bearer preferred, API key fallback (transition).
@@ -1146,7 +676,7 @@ async def ingest_galaxy(request: Request, payload: dict = Body(...)):
             ingest_user = await _get_ingest_user(request, db)
             ingest_user_id = int(ingest_user.id) if ingest_user else None
         except Exception:
-            ingest_user_id = None  # never block ingest
+            ingest_user_id = None
 
         for r in rows:
             try:
@@ -1216,7 +746,7 @@ async def ingest_galaxy(request: Request, payload: dict = Body(...)):
     if imported > 0 and ingest_user_id is not None:
         try:
             async with AsyncSessionLocal() as prestige_db:
-                await prestige_scan(prestige_db, ingest_user_id, 1)  # +1 unique system
+                await prestige_scan(prestige_db, ingest_user_id, 1)
                 await prestige_db.commit()
         except Exception:
             pass
