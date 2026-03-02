@@ -4,6 +4,7 @@
   "use strict";
 
   var TOKEN_KEY = "ogx_jwt";
+  var IS_LOGIN_PAGE = window.location.pathname === "/login";
 
   function qs(sel) { return document.querySelector(sel); }
   function getCsrfToken() {
@@ -19,8 +20,7 @@
     var backdrop = qs("#token-popup-backdrop");
     var ta       = qs("#token-popup-ta");
     if (!popup) return;
-    var token = getToken();
-    if (ta) ta.value = token || "";
+    if (ta) ta.value = getToken() || "";
     popup.classList.add("open");
     if (backdrop) backdrop.classList.add("open");
   }
@@ -77,6 +77,24 @@
     }
   }
 
+  // ── Mobile hamburger ───────────────────────────────────────────
+  function bindHamburger() {
+    var btn = qs("#nav-hamburger");
+    var nav = qs("#main-nav");
+    if (!btn || !nav) return;
+    btn.addEventListener("click", function() {
+      var open = nav.classList.toggle("nav-open");
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+    // Close on nav link click
+    nav.querySelectorAll("a").forEach(function(a) {
+      a.addEventListener("click", function() {
+        nav.classList.remove("nav-open");
+        btn.setAttribute("aria-expanded", "false");
+      });
+    });
+  }
+
   // ── Nav state ──────────────────────────────────────────────────
   function setLoggedIn(username) {
     var statusEl   = qs("#auth-status");
@@ -90,6 +108,11 @@
     if (openEl)     openEl.setAttribute("hidden", "");
     if (logoutEl)   logoutEl.removeAttribute("hidden");
     if (prestigeEl) prestigeEl.removeAttribute("hidden");
+
+    // On login page: redirect to home after successful login
+    if (IS_LOGIN_PAGE) {
+      setTimeout(function() { window.location.href = "/"; }, 300);
+    }
   }
 
   function setLoggedOut(expired) {
@@ -110,6 +133,11 @@
     if (logoutEl)   logoutEl.setAttribute("hidden", "");
     if (prestigeEl) prestigeEl.setAttribute("hidden", "");
     closePopup();
+
+    // Redirect to login if not already there
+    if (!IS_LOGIN_PAGE) {
+      window.location.href = "/login";
+    }
   }
 
   // ── Status check ───────────────────────────────────────────────
@@ -120,7 +148,7 @@
       .then(function(r) { return r.ok ? r.json() : null; })
       .then(function(d) {
         if (!d || !d.ok) throw new Error("expired");
-        var label = d.is_admin ? d.username + " (Admin)" : d.username;
+        var label = d.is_admin ? d.username + " ★" : d.username;
         setLoggedIn(label);
       })
       .catch(function() { clearToken(); setLoggedOut(true); });
@@ -130,7 +158,10 @@
   function bindLogout() {
     var btn = qs("#auth-logout");
     if (!btn) return;
-    btn.addEventListener("click", function() { clearToken(); setLoggedOut(false); });
+    btn.addEventListener("click", function() {
+      clearToken();
+      setLoggedOut(false);
+    });
   }
 
   // ── Fetch helper ───────────────────────────────────────────────
@@ -149,7 +180,7 @@
   window.ogxAuth = { getToken: getToken, clearToken: clearToken, refreshStatus: refreshStatus };
   window.ogxFetch = ogxFetch;
 
-  function init() { bindPopup(); bindLogout(); refreshStatus(); }
+  function init() { bindPopup(); bindHamburger(); bindLogout(); refreshStatus(); }
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", init);
   } else { init(); }

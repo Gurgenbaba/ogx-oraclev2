@@ -1450,3 +1450,90 @@ details > summary::-webkit-details-marker {
 }
 
 .psg-empty-msg { font-size: .85rem; padding: 8px 0; }
+/* ─── Mobile / Responsive additions ─────────────────────────────────────── */
+
+/* Hamburger button */
+.nav-hamburger {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  margin-left: auto;
+}
+.nav-hamburger span {
+  display: block;
+  width: 22px;
+  height: 2px;
+  background: rgba(180,210,255,.8);
+  border-radius: 2px;
+  transition: transform .2s, opacity .2s;
+}
+
+/* Token popup — mobile safe */
+.token-popup {
+  max-width: min(420px, calc(100vw - 32px));
+  left: 50%;
+  transform: translateX(-50%);
+  right: auto;
+}
+
+/* Topbar */
+.topbar-inner {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 768px) {
+  /* Show hamburger, hide nav by default */
+  .nav-hamburger { display: flex; }
+
+  .nav {
+    display: none;
+    flex-direction: column;
+    width: 100%;
+    order: 3;
+    background: var(--bg-card, rgba(15,25,50,.98));
+    border-top: 1px solid rgba(100,160,255,.1);
+    padding: 8px 0;
+    gap: 0;
+  }
+  .nav.nav-open { display: flex; }
+  .nav a {
+    padding: 12px 16px;
+    border-radius: 0;
+    font-size: 15px;
+    border-bottom: 1px solid rgba(100,160,255,.06);
+  }
+
+  /* Authbox — compact on mobile */
+  .authbox {
+    order: 2;
+    margin-left: auto;
+  }
+  #auth-status { display: none; }
+  .brand { order: 1; }
+
+  /* Main content padding */
+  .main-pad { padding: 16px 12px; }
+  .wrap { padding-left: 12px; padding-right: 12px; }
+
+  /* Tables — horizontal scroll */
+  .table-wrap, table { overflow-x: auto; display: block; }
+
+  /* Cards stack */
+  .grid-2, .grid-3 { grid-template-columns: 1fr !important; }
+
+  /* Login card — full width on mobile */
+  .login-wrap { padding: 16px; }
+  .login-card { width: 100%; max-width: 100%; }
+}
+
+@media (max-width: 480px) {
+  .nav a { font-size: 14px; padding: 10px 14px; }
+  .topbar-inner { padding: 8px 12px; }
+  .brand-mark, .brand-rest { font-size: 18px; }
+}
+

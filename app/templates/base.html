@@ -12,7 +12,6 @@
   <link rel="icon" type="image/x-icon" href="/static/favicon.ico?v=2" />
   <link rel="shortcut icon" href="/static/favicon.ico?v=2" />
   {% block head_extra %}{% endblock %}
-  <!-- i18n data: CSP-safe JSON, read by i18n.js -->
   <script id="i18n-data" type="application/json">{{ i18n_js | tojson }}</script>
   <script src="/static/i18n.js"></script>
 </head>
@@ -23,18 +22,22 @@
       <a class="brand" href="/" aria-label="OGX Oracle">
         <span class="brand-mark">OGX</span><span class="brand-rest"> Oracle</span>
       </a>
-      <nav class="nav">
+      <!-- Mobile hamburger -->
+      <button class="nav-hamburger" id="nav-hamburger" type="button" aria-label="Menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+      <nav class="nav" id="main-nav">
         <a href="/" class="{% if active_nav == 'search' %}active{% endif %}" {% if active_nav == 'search' %}aria-current="page"{% endif %}>{{ t('nav.search') }}</a>
         <a href="/galaxy" class="{% if active_nav == 'galaxy' %}active{% endif %}" {% if active_nav == 'galaxy' %}aria-current="page"{% endif %}>{{ t('nav.galaxy') }}</a>
         <a href="/import-ui" class="{% if active_nav == 'import' %}active{% endif %}" {% if active_nav == 'import' %}aria-current="page"{% endif %}>{{ t('nav.import') }}</a>
         <a href="/export.csv">{{ t('nav.export') }}</a>
         <a href="https://ogx-expedition-production.up.railway.app" target="_blank" class="muted nav-expedition">{{ t('nav.expedition') }}</a>
       </nav>
-      <div class="authbox">
+      <div class="authbox" id="authbox">
         <a id="nav-prestige" href="/prestige" class="nav-prestige-link {% if active_nav == 'prestige' %}active{% endif %}" hidden>🏆 {{ t('prestige.title') }}</a>
-        <span id="auth-status" class="muted fs-13" aria-live="polite">{{ t('auth.not_logged_in') }}</span>
+        <span id="auth-status" class="muted fs-13" aria-live="polite"></span>
         <span id="auth-username" class="auth-username" hidden></span>
-        <!-- Token popup (opens on username click) -->
+        <!-- Token popup -->
         <div id="token-popup-backdrop" class="token-popup-backdrop"></div>
         <div id="token-popup" class="token-popup" role="dialog" aria-label="Bearer Token">
           <div class="token-popup-header">
@@ -53,7 +56,6 @@
       </div>
     </div>
   </header>
-
   <main id="main" class="wrap main-pad">{% block content %}{% endblock %}</main>
   <footer class="footer wrap">
     <div>{{ t('footer.community') }}</div>
