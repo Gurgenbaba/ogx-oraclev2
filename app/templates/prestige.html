@@ -3,35 +3,17 @@
 
 {% block content %}
 <style>
-.psg-grid {
-  display:grid; grid-template-columns:1fr 1fr; gap:18px;
-  max-width:960px; margin:0 auto;
-}
-@media(max-width:680px){ .psg-grid { grid-template-columns:1fr; } }
-
-.pcard {
-  background:#050f1e; border:1px solid #0e4a5a;
-  border-radius:10px; padding:18px 20px;
-}
-.pcard h3 {
-  margin:0 0 14px; font-size:11px; letter-spacing:.7px;
-  text-transform:uppercase; color:#22d3ee; opacity:.75;
-}
-.rank-hero {
-  grid-column:1/-1; display:flex; align-items:center; gap:20px;
-  padding:22px 26px;
-  background:linear-gradient(135deg,#030d1a,#050f1e,#020a14);
-  border:1px solid #0e4a5a; border-radius:12px;
-}
+.psg-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; max-width:960px; margin:0 auto; }
+@media(max-width:680px){ .psg-grid{ grid-template-columns:1fr; } }
+.pcard { background:#050f1e; border:1px solid #0e4a5a; border-radius:10px; padding:18px 20px; }
+.pcard h3 { margin:0 0 14px; font-size:11px; letter-spacing:.7px; text-transform:uppercase; color:#22d3ee; opacity:.75; }
+.rank-hero { grid-column:1/-1; display:flex; align-items:center; gap:20px; padding:22px 26px;
+  background:linear-gradient(135deg,#030d1a,#050f1e,#020a14); border:1px solid #0e4a5a; border-radius:12px; }
 .rank-icon { font-size:48px; line-height:1; flex-shrink:0; }
 .rank-info { flex:1; min-width:0; }
 .rank-name { font-size:24px; font-weight:700; color:#e2e8f0; }
 .rank-op   { font-size:13px; color:#22d3ee; margin-top:4px; }
-.rank-badge {
-  display:inline-block; font-size:10px; padding:2px 8px;
-  background:#062030; color:#22d3ee;
-  border:1px solid #0e4a5a; border-radius:10px; margin-top:5px;
-}
+.rank-badge { display:inline-block; font-size:10px; padding:2px 8px; background:#062030; color:#22d3ee; border:1px solid #0e4a5a; border-radius:10px; margin-top:5px; }
 .prog-wrap  { margin-top:12px; }
 .prog-label { display:flex; justify-content:space-between; font-size:11px; color:#4b7a8a; margin-bottom:4px; }
 .prog-bar   { height:7px; background:#062030; border-radius:4px; overflow:hidden; }
@@ -46,24 +28,18 @@
 .ach-item   { display:flex; align-items:center; gap:11px; padding:9px 11px; border-radius:8px; font-size:12px; }
 .ach-item.unlocked { background:#031a10; border:1px solid #0f5132; }
 .ach-item.locked   { background:#030d1a; border:1px solid #0b3545; opacity:.55; }
-.ach-icon   { font-size:18px; flex-shrink:0; width:26px; text-align:center; }
-.ach-name   { font-weight:600; color:#e2e8f0; }
-.ach-desc   { color:#4b7a8a; font-size:11px; }
-.ach-op     { margin-left:auto; color:#f59e0b; font-weight:600; font-size:11px; white-space:nowrap; }
-.lb-table   { width:100%; border-collapse:collapse; font-size:12px; }
-.lb-table th { text-align:left; color:#4b7a8a; font-weight:600; padding:5px 8px;
-               border-bottom:1px solid #0b3545; font-size:10px; text-transform:uppercase; letter-spacing:.5px; }
+.ach-icon { font-size:18px; flex-shrink:0; width:26px; text-align:center; }
+.ach-name { font-weight:600; color:#e2e8f0; }
+.ach-desc { color:#4b7a8a; font-size:11px; }
+.ach-op   { margin-left:auto; color:#f59e0b; font-weight:600; font-size:11px; white-space:nowrap; }
+.lb-table { width:100%; border-collapse:collapse; font-size:12px; }
+.lb-table th { text-align:left; color:#4b7a8a; font-weight:600; padding:5px 8px; border-bottom:1px solid #0b3545; font-size:10px; text-transform:uppercase; letter-spacing:.5px; }
 .lb-table td { padding:8px; border-bottom:1px solid #050f1e; }
 .lb-table tr:hover td { background:#030d1a; }
 .lb-rank { color:#4b7a8a; width:28px; }
 .lb-op   { color:#22d3ee; font-weight:600; text-align:right; }
-.lb-badge {
-  display:inline-block; font-size:10px; padding:2px 8px; border-radius:10px;
-  background:#062030; color:#22d3ee; border:1px solid #0e4a5a;
-}
+.lb-badge { display:inline-block; font-size:10px; padding:2px 8px; border-radius:10px; background:#062030; color:#22d3ee; border:1px solid #0e4a5a; }
 .top1 { color:#f59e0b; } .top2 { color:#94a3b8; } .top3 { color:#b45309; }
-#psg-loading { text-align:center; padding:80px 0; color:#4b7a8a; font-size:14px; }
-#psg-unauth  { text-align:center; padding:60px 0; }
 </style>
 
 <div style="max-width:960px;margin:0 auto;padding:0 0 40px;">
@@ -72,200 +48,190 @@
     <a href="/" style="font-size:12px;color:#22d3ee;text-decoration:none;opacity:.7">← Oracle</a>
   </div>
 
-  <div id="psg-loading">⏳ {{ t('prestige.loading') if t('prestige.loading') != 'prestige.loading' else 'Laden…' }}</div>
-
-  <div id="psg-unauth" style="display:none;">
-    <div style="font-size:32px;margin-bottom:12px;">🔒</div>
-    <div style="color:#e2e8f0;margin-bottom:8px;">{{ t('auth.not_logged_in') }}</div>
-    <a href="/login" class="btn btn-sm" style="margin-top:8px;">{{ t('auth.login') }}</a>
+  <!-- Loading state -->
+  <div id="psg-loading" style="text-align:center;padding:80px 0;color:#4b7a8a;font-size:14px;">
+    {{ t('prestige.loading') }}
   </div>
 
-  <div id="psg-content" style="display:none;" class="psg-grid">
+  <!-- Not logged in state -->
+  <div id="psg-unauth" style="display:none;text-align:center;padding:60px 0;">
+    <div style="font-size:40px;margin-bottom:12px;">🔒</div>
+    <div style="color:#e2e8f0;font-size:14px;margin-bottom:16px;">{{ t('auth.not_logged_in') }}</div>
+    <a href="/login" class="btn btn-sm">{{ t('auth.login') }}</a>
+  </div>
 
-    <!-- Rank hero -->
-    <div class="rank-hero">
-      <div id="psg-icon" style="font-size:48px;line-height:1;flex-shrink:0;"></div>
-      <div class="rank-info">
-        <div id="psg-rank-name" class="rank-name"></div>
-        <div id="psg-op" class="rank-op"></div>
-        <div id="psg-scanner" class="rank-badge" style="display:none;"></div>
-        <div id="psg-prog" class="prog-wrap" style="display:none;">
-          <div class="prog-label">
-            <span id="psg-next-name"></span>
-            <span id="psg-next-op"></span>
+  <!-- Main content — hidden until data loaded -->
+  <div id="psg-content" style="display:none;">
+    <div class="psg-grid">
+
+      <!-- Rank hero -->
+      <div class="rank-hero">
+        <div id="psg-icon" class="rank-icon">🪐</div>
+        <div class="rank-info">
+          <div id="psg-rank-name" class="rank-name"></div>
+          <div id="psg-op" class="rank-op"></div>
+          <div id="psg-scanner" class="rank-badge" style="display:none;"></div>
+          <div id="psg-prog" class="prog-wrap" style="display:none;">
+            <div class="prog-label">
+              <span id="psg-next-name"></span>
+              <span id="psg-next-op"></span>
+            </div>
+            <div class="prog-bar"><div id="psg-prog-fill" class="prog-fill" style="width:0%"></div></div>
           </div>
-          <div class="prog-bar"><div id="psg-prog-fill" class="prog-fill" style="width:0%"></div></div>
-        </div>
-        <div id="psg-maxrank" style="display:none;margin-top:8px;font-size:11px;color:#f59e0b;">{{ t('prestige.max_rank') }}</div>
-      </div>
-    </div>
-
-    <!-- Activity -->
-    <div class="pcard">
-      <h3>{{ t('prestige.activity') }}</h3>
-      <div class="stats-row">
-        <div class="stat-box"><div id="psg-expo" class="stat-val">0</div><div class="stat-lbl">{{ t('prestige.expeditions') }}</div></div>
-        <div class="stat-box"><div id="psg-scan" class="stat-val">0</div><div class="stat-lbl">{{ t('prestige.systems_scanned') }}</div></div>
-        <div class="stat-box"><div id="psg-smug" class="stat-val">0</div><div class="stat-lbl">{{ t('prestige.smuggler_codes') }}</div></div>
-      </div>
-    </div>
-
-    <!-- Streak -->
-    <div class="pcard">
-      <h3>{{ t('prestige.streak') }}</h3>
-      <div style="display:flex;align-items:center;gap:14px;">
-        <div style="font-size:32px;">🔥</div>
-        <div>
-          <div id="psg-streak" class="streak-num">0</div>
-          <div class="streak-lbl">{{ t('prestige.streak_current') }}</div>
-          <div id="psg-best" style="margin-top:5px;font-size:11px;color:#4b7a8a;"></div>
+          <div id="psg-maxrank" style="display:none;margin-top:8px;font-size:11px;color:#f59e0b;">{{ t('prestige.max_rank') }}</div>
         </div>
       </div>
-    </div>
 
-    <!-- Achievements -->
-    <div class="pcard" style="grid-column:1/-1;">
-      <h3>{{ t('prestige.achievements') }}</h3>
-      <div id="psg-ach-unlocked-label" style="display:none;margin-bottom:10px;font-size:11px;color:#4b7a8a;"></div>
-      <div id="psg-ach-unlocked" class="ach-list" style="margin-bottom:18px;"></div>
-      <div id="psg-ach-locked-label" style="display:none;margin-bottom:8px;font-size:11px;color:#4b7a8a;">{{ t('prestige.next_to_unlock') }}</div>
-      <div id="psg-ach-locked" class="ach-list"></div>
-    </div>
+      <!-- Activity -->
+      <div class="pcard">
+        <h3>{{ t('prestige.activity') }}</h3>
+        <div class="stats-row">
+          <div class="stat-box"><div id="psg-expo" class="stat-val">—</div><div class="stat-lbl">{{ t('prestige.expeditions') }}</div></div>
+          <div class="stat-box"><div id="psg-scan" class="stat-val">—</div><div class="stat-lbl">{{ t('prestige.systems_scanned') }}</div></div>
+          <div class="stat-box"><div id="psg-smug" class="stat-val">—</div><div class="stat-lbl">{{ t('prestige.smuggler_codes') }}</div></div>
+        </div>
+      </div>
 
-    <!-- Leaderboard -->
-    <div class="pcard" style="grid-column:1/-1;">
-      <h3>{{ t('prestige.leaderboard') }}</h3>
-      <table class="lb-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>{{ t('prestige.col_player') }}</th>
-            <th>{{ t('prestige.col_rank') }}</th>
-            <th style="text-align:right">{{ t('prestige.col_op') }}</th>
-            <th style="text-align:right">{{ t('prestige.col_expeditions') }}</th>
-            <th style="text-align:right">{{ t('prestige.col_systems') }}</th>
-          </tr>
-        </thead>
-        <tbody id="psg-lb-body">
-          <tr><td colspan="6" style="text-align:center;color:#4b7a8a;padding:20px;">{{ t('prestige.no_data') }}</td></tr>
-        </tbody>
-      </table>
-    </div>
+      <!-- Streak -->
+      <div class="pcard">
+        <h3>{{ t('prestige.streak') }}</h3>
+        <div style="display:flex;align-items:center;gap:14px;">
+          <div style="font-size:32px;">🔥</div>
+          <div>
+            <div id="psg-streak" class="streak-num">—</div>
+            <div class="streak-lbl">{{ t('prestige.streak_current') }}</div>
+            <div id="psg-best" style="margin-top:5px;font-size:11px;color:#4b7a8a;"></div>
+          </div>
+        </div>
+      </div>
 
+      <!-- Achievements -->
+      <div class="pcard" style="grid-column:1/-1;">
+        <h3>{{ t('prestige.achievements') }}</h3>
+        <div id="psg-ach-unlocked-label" style="display:none;margin-bottom:10px;font-size:11px;color:#4b7a8a;"></div>
+        <div id="psg-ach-unlocked" class="ach-list" style="margin-bottom:16px;"></div>
+        <div id="psg-ach-locked-label" style="display:none;margin-bottom:8px;font-size:11px;color:#4b7a8a;">{{ t('prestige.next_to_unlock') }}</div>
+        <div id="psg-ach-locked" class="ach-list"></div>
+      </div>
+
+      <!-- Leaderboard -->
+      <div class="pcard" style="grid-column:1/-1;">
+        <h3>{{ t('prestige.leaderboard') }}</h3>
+        <table class="lb-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>{{ t('prestige.col_player') }}</th>
+              <th>{{ t('prestige.col_rank') }}</th>
+              <th style="text-align:right">{{ t('prestige.col_op') }}</th>
+              <th style="text-align:right">{{ t('prestige.col_expeditions') }}</th>
+              <th style="text-align:right">{{ t('prestige.col_systems') }}</th>
+            </tr>
+          </thead>
+          <tbody id="psg-lb-body">
+            <tr><td colspan="6" style="text-align:center;color:#4b7a8a;padding:20px;">{{ t('prestige.no_data') }}</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
   </div><!-- end psg-content -->
 </div>
 
 <script>
 (function() {
-  const I = window.I18N || {};
-  function t(k) { return I[k] || k; }
-  function fmt(n) { return Number(n||0).toLocaleString(); }
+  "use strict";
+  var I = window.I18N || {};
+  function t(k){ return I[k] || k; }
+  function fmt(n){ return Number(n||0).toLocaleString(); }
+  var MEDALS = ["🥇","🥈","🥉"];
+  var ICONS = {"Grand Oracle":"👑","High Oracle":"🔮","Strategist":"🧠","Commander":"⚔️","Analyst":"📊","Cadet":"🪐"};
 
-  const RANK_ICONS = {
-    "Grand Oracle":"👑","High Oracle":"🔮","Strategist":"🧠",
-    "Commander":"⚔️","Analyst":"📊","Cadet":"🪐"
-  };
-  const MEDALS = ["🥇","🥈","🥉"];
+  function gel(id){ return document.getElementById(id); }
 
-  function qs(id) { return document.getElementById(id); }
-
-  async function load() {
-    const token = localStorage.getItem('ogx_jwt');
-    if (!token) {
-      qs('psg-loading').style.display = 'none';
-      qs('psg-unauth').style.display = '';
-      return;
-    }
-
-    try {
-      const resp = await fetch('/api/prestige', {
-        headers: { 'Authorization': 'Bearer ' + token }
-      });
-      if (resp.status === 401) {
-        qs('psg-loading').style.display = 'none';
-        qs('psg-unauth').style.display = '';
-        return;
-      }
-      const data = await resp.json();
-      if (!data.ok) throw new Error('bad response');
-      render(data.summary, data.leaderboard || []);
-    } catch(e) {
-      qs('psg-loading').textContent = '⚠ Fehler beim Laden.';
-    }
+  function showState(state) {
+    gel('psg-loading').style.display = state === 'loading' ? '' : 'none';
+    gel('psg-unauth').style.display  = state === 'unauth'  ? '' : 'none';
+    gel('psg-content').style.display = state === 'content' ? '' : 'none';
   }
 
   function render(s, lb) {
-    qs('psg-loading').style.display = 'none';
-    qs('psg-content').style.display = '';
-
-    // Rank hero
-    const rank = s.prestige_rank || 'Cadet';
-    qs('psg-icon').textContent      = RANK_ICONS[rank] || '🪐';
-    qs('psg-rank-name').textContent = t('rank.' + rank) || rank;
-    qs('psg-op').textContent        = fmt(s.total_op) + ' ' + t('prestige.oracle_points');
+    // Rank
+    var rank = s.prestige_rank || 'Cadet';
+    gel('psg-icon').textContent      = ICONS[rank] || '🪐';
+    gel('psg-rank-name').textContent = t('rank.' + rank) || rank;
+    gel('psg-op').textContent        = fmt(s.total_op) + ' ' + t('prestige.oracle_points');
 
     if (s.scanner_title) {
-      qs('psg-scanner').textContent = t('scanner.' + s.scanner_title) || s.scanner_title;
-      qs('psg-scanner').style.display = 'inline-block';
+      gel('psg-scanner').textContent  = t('scanner.' + s.scanner_title) || s.scanner_title;
+      gel('psg-scanner').style.display = 'inline-block';
     }
-
     if (s.next_rank) {
-      qs('psg-next-name').textContent = '→ ' + (t('rank.' + s.next_rank.name) || s.next_rank.name);
-      qs('psg-next-op').textContent   = fmt(s.next_rank.op_needed) + ' ' + t('prestige.op_needed');
-      qs('psg-prog-fill').style.width = (s.progress_pct || 0) + '%';
-      qs('psg-prog').style.display    = '';
+      gel('psg-next-name').textContent = '→ ' + (t('rank.' + s.next_rank.name) || s.next_rank.name);
+      gel('psg-next-op').textContent   = fmt(s.next_rank.op_needed) + ' ' + t('prestige.op_needed');
+      gel('psg-prog-fill').style.width = (s.progress_pct || 0) + '%';
+      gel('psg-prog').style.display    = '';
     } else {
-      qs('psg-maxrank').style.display = '';
+      gel('psg-maxrank').style.display = '';
     }
 
     // Stats
-    qs('psg-expo').textContent   = fmt(s.expo_count);
-    qs('psg-scan').textContent   = fmt(s.scan_count);
-    qs('psg-smug').textContent   = fmt(s.smuggler_count);
-    qs('psg-streak').textContent = s.current_streak || 0;
-    qs('psg-best').textContent   = t('prestige.streak_best').replace('{n}', s.longest_streak || 0);
+    gel('psg-expo').textContent   = fmt(s.expo_count);
+    gel('psg-scan').textContent   = fmt(s.scan_count);
+    gel('psg-smug').textContent   = fmt(s.smuggler_count);
+    gel('psg-streak').textContent = String(s.current_streak || 0);
+    gel('psg-best').textContent   = t('prestige.streak_best').replace('{n}', s.longest_streak || 0);
 
     // Achievements unlocked
-    const ul = s.achievements_unlocked || [];
+    var ul = s.achievements_unlocked || [];
     if (ul.length) {
-      qs('psg-ach-unlocked-label').textContent = ul.length + ' ' + t('prestige.unlocked');
-      qs('psg-ach-unlocked-label').style.display = '';
-      qs('psg-ach-unlocked').innerHTML = ul.map(a => `
-        <div class="ach-item unlocked">
-          <div class="ach-icon">${a.icon}</div>
-          <div><div class="ach-name">${a.name}</div><div class="ach-desc">${a.description}</div></div>
-          <div class="ach-op">${t('prestige.achievement_unlocked')}</div>
-        </div>`).join('');
+      gel('psg-ach-unlocked-label').textContent  = ul.length + ' ' + t('prestige.unlocked');
+      gel('psg-ach-unlocked-label').style.display = '';
+      gel('psg-ach-unlocked').innerHTML = ul.map(function(a){
+        return '<div class="ach-item unlocked"><div class="ach-icon">'+a.icon+'</div><div><div class="ach-name">'+a.name+'</div><div class="ach-desc">'+a.description+'</div></div><div class="ach-op">'+t('prestige.achievement_unlocked')+'</div></div>';
+      }).join('');
     }
 
     // Achievements locked
-    const lo = s.achievements_locked || [];
+    var lo = s.achievements_locked || [];
     if (lo.length) {
-      qs('psg-ach-locked-label').style.display = '';
-      qs('psg-ach-locked').innerHTML = lo.map(a => `
-        <div class="ach-item locked">
-          <div class="ach-icon">${a.icon}</div>
-          <div><div class="ach-name">${a.name}</div><div class="ach-desc">${a.description}</div></div>
-          ${a.op_reward > 0 ? `<div class="ach-op">+${a.op_reward} OP</div>` : ''}
-        </div>`).join('');
+      gel('psg-ach-locked-label').style.display = '';
+      gel('psg-ach-locked').innerHTML = lo.map(function(a){
+        return '<div class="ach-item locked"><div class="ach-icon">'+a.icon+'</div><div><div class="ach-name">'+a.name+'</div><div class="ach-desc">'+a.description+'</div></div>'+(a.op_reward>0?'<div class="ach-op">+'+a.op_reward+' OP</div>':'')+'</div>';
+      }).join('');
     }
 
     // Leaderboard
     if (lb.length) {
-      qs('psg-lb-body').innerHTML = lb.map(e => {
-        const medal = e.rank <= 3 ? MEDALS[e.rank-1] : e.rank;
-        const cls   = e.rank === 1 ? 'top1' : e.rank === 2 ? 'top2' : e.rank === 3 ? 'top3' : '';
-        const you   = e.is_current_user ? ` <span style="font-size:10px;color:#22d3ee;">${t('prestige.you')}</span>` : '';
-        return `<tr>
-          <td class="lb-rank ${cls}">${medal}</td>
-          <td style="color:#e2e8f0;">${e.username}${you}</td>
-          <td><span class="lb-badge">${t('rank.' + e.prestige_rank) || e.prestige_rank}</span></td>
-          <td class="lb-op">${fmt(e.total_op)}</td>
-          <td style="text-align:right;color:#4b7a8a;">${fmt(e.expo_count)}</td>
-          <td style="text-align:right;color:#4b7a8a;">${fmt(e.scan_count)}</td>
-        </tr>`;
+      gel('psg-lb-body').innerHTML = lb.map(function(e){
+        var medal = e.rank <= 3 ? MEDALS[e.rank-1] : String(e.rank);
+        var cls   = e.rank===1?'top1':e.rank===2?'top2':e.rank===3?'top3':'';
+        var you   = e.is_current_user ? ' <span style="font-size:10px;color:#22d3ee;">' + t('prestige.you') + '</span>' : '';
+        return '<tr><td class="lb-rank '+cls+'">'+medal+'</td><td style="color:#e2e8f0;">'+e.username+you+'</td><td><span class="lb-badge">'+(t('rank.'+e.prestige_rank)||e.prestige_rank)+'</span></td><td class="lb-op">'+fmt(e.total_op)+'</td><td style="text-align:right;color:#4b7a8a;">'+fmt(e.expo_count)+'</td><td style="text-align:right;color:#4b7a8a;">'+fmt(e.scan_count)+'</td></tr>';
       }).join('');
     }
+
+    showState('content');
+  }
+
+  function load() {
+    showState('loading');
+    var token = localStorage.getItem('ogx_jwt');
+    if (!token) { showState('unauth'); return; }
+
+    fetch('/api/prestige', { headers: { 'Authorization': 'Bearer ' + token } })
+      .then(function(r){
+        if (r.status === 401) { showState('unauth'); return null; }
+        return r.json();
+      })
+      .then(function(data){
+        if (!data) return;
+        if (!data.ok) { showState('unauth'); return; }
+        render(data.summary, data.leaderboard || []);
+      })
+      .catch(function(){
+        gel('psg-loading').textContent = '⚠ ' + t('prestige.loading') + ' — Fehler.';
+      });
   }
 
   if (document.readyState === 'loading') {

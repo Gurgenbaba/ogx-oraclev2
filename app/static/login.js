@@ -29,14 +29,11 @@
     return m ? m.content : '';
   }
 
-  function onSuccess(token, username) {
-    // Save to localStorage so app knows user is logged in
-    localStorage.setItem('ogx_jwt', token);
-    // Go to success page to show token, then user clicks continue
-    const next = new URLSearchParams(window.location.search).get('next') || '/';
-    window.location.href = '/login/success?t=' + encodeURIComponent(token)
-      + '&u=' + encodeURIComponent(username)
-      + '&next=' + encodeURIComponent(next);
+  function redirectToSuccess(token, username, next) {
+    const url = '/login/success?t=' + encodeURIComponent(token)
+              + '&u=' + encodeURIComponent(username)
+              + '&next=' + encodeURIComponent(next || '/');
+    window.location.href = url;
   }
 
   function doLogin() {
@@ -47,20 +44,20 @@
     btnLogin.textContent = '…';
     fetch('/auth/login', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-csrf-token': getCsrf() },
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
       body: JSON.stringify({ username, password })
     })
-    .then(r => r.json())
-    .then(d => {
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
       if (d.ok && d.token) {
-        onSuccess(d.token, username);
+        redirectToSuccess(d.token, username, new URLSearchParams(window.location.search).get('next') || '/');
       } else {
         showErr(d.detail || d.error || d.message || 'Login fehlgeschlagen.');
         btnLogin.disabled = false;
         btnLogin.textContent = window.I18N && window.I18N['auth.login'] || 'Login';
       }
     })
-    .catch(() => {
+    .catch(function () {
       showErr('Netzwerkfehler.');
       btnLogin.disabled = false;
       btnLogin.textContent = window.I18N && window.I18N['auth.login'] || 'Login';
@@ -75,20 +72,20 @@
     btnRegister.textContent = '…';
     fetch('/auth/register', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-csrf-token': getCsrf() },
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
       body: JSON.stringify({ username, password })
     })
-    .then(r => r.json())
-    .then(d => {
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
       if (d.ok && d.token) {
-        onSuccess(d.token, username);
+        redirectToSuccess(d.token, username, new URLSearchParams(window.location.search).get('next') || '/');
       } else {
         showErr(d.detail || d.error || d.message || 'Registrierung fehlgeschlagen.');
         btnRegister.disabled = false;
         btnRegister.textContent = window.I18N && window.I18N['auth.create_account'] || 'Account erstellen';
       }
     })
-    .catch(() => {
+    .catch(function () {
       showErr('Netzwerkfehler.');
       btnRegister.disabled = false;
       btnRegister.textContent = window.I18N && window.I18N['auth.create_account'] || 'Account erstellen';
@@ -98,6 +95,7 @@
   btnLogin.addEventListener('click', doLogin);
   btnRegister.addEventListener('click', doRegister);
 
+  // Enter key
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Enter') return;
     if (!paneLogin.hidden) doLogin();

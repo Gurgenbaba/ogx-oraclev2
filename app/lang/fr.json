@@ -180,5 +180,6 @@
   "profile.tab_token": "🔑 Token",
   "profile.next_rank": "→ {rank}",
   "nav.prestige": "🏆 Prestige",
-  "auth.profile": "Profil"
+  "auth.profile": "Profil",
+  "prestige.loading": "Chargement…"
 }

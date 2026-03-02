@@ -187,8 +187,6 @@
       if (status) status.textContent = "Logged in: " + label;
       if (openBtn) openBtn.style.display = "none";
       if (logoutBtn) logoutBtn.style.display = "";
-      const prestigeNav = document.querySelector("#nav-prestige");
-      if (prestigeNav) prestigeNav.style.display = "";
     } catch (e) {
       clearToken();
       if (status) status.textContent = "Session expired – please log in again";
