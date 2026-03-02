@@ -5,3 +5,6 @@
 __pycache__/
 .pytest_cache/
 .venv/
+ogx.db
+ogx.db-shm
+ogx.db-wal
