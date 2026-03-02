@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         OGX Oracle – Galaxy Collector
 // @namespace    ogx-oracle
-// @version      2.0.0
+// @version      2.1.0
 // @description  Collects Galaxy View data and sends to OGX Oracle. Supports DE/EN/FR OGame servers.
 // @match        https://uni1.playogx.com/*
 // @match        http://uni1.playogx.com/*
@@ -107,8 +107,8 @@
     AUTO_SEND:   true,
   };
   const DEBUG = false;
-  const SEND_DEBOUNCE_MS = 900;
-  const MIN_RESEND_SAME_GS_MS = 10_000;
+  const SEND_DEBOUNCE_MS = 200;
+  const MIN_RESEND_SAME_GS_MS = 4_000;
 
   function log(...a) { if (DEBUG) console.log("[OGX-Oracle]", ...a); }
 
@@ -382,12 +382,30 @@
     createBadge();
     showBadge("idle", "");
 
-    if (getAutoSend()) setTimeout(() => scheduleSend("auto"), 800);
+    if (getAutoSend()) setTimeout(() => scheduleSend("auto"), 250);
 
+    // Watch galaxy-rows for DOM changes
     const target = document.querySelector("#galaxy-rows");
     if (target) {
-      new MutationObserver(() => scheduleSend("mutation")).observe(target, { childList: true, subtree: true });
+      const obs = new MutationObserver(() => scheduleSend("mutation"));
+      obs.observe(target, { childList: true, subtree: true, characterData: true });
     }
+
+    // Intercept galaxy navigation form (prev/next system buttons)
+    document.querySelectorAll("form[name='galaxyform'], form[action*='galaxy']").forEach(form => {
+      form.addEventListener("submit", () => {
+        lastGSKey = "";  // reset so next system sends immediately
+        setTimeout(() => scheduleSend("navform"), 350);
+      });
+    });
+
+    // Arrow key navigation (some OGX versions support it)
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+        lastGSKey = "";
+        setTimeout(() => scheduleSend("keyNav"), 350);
+      }
+    });
   }
 
   if (document.readyState === "loading") {
