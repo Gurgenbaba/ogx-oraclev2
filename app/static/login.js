@@ -1,35 +1,35 @@
-/**
- * OGX Oracle — Login page logic
- * CSP-safe: external file only
- * After login: shows token inline on the same page, no redirect to success page
- */
+// app/static/login.js — CSP-safe, no eval, no inline handlers
 (function () {
   "use strict";
 
   var tabLogin    = document.getElementById("tab-login");
   var tabReg      = document.getElementById("tab-register");
+  var loginTabs   = document.getElementById("login-tabs");
   var paneLogin   = document.getElementById("pane-login");
   var paneReg     = document.getElementById("pane-register");
+  var paneToken   = document.getElementById("pane-token");
   var errBox      = document.getElementById("auth-error");
   var btnLogin    = document.getElementById("btn-login");
   var btnRegister = document.getElementById("btn-register");
-
-  // Token success panel elements
-  var paneToken   = document.getElementById("pane-token");
   var tokenTa     = document.getElementById("token-ta");
   var btnCopy     = document.getElementById("btn-copy");
   var btnContinue = document.getElementById("btn-continue");
   var copiedMsg   = document.getElementById("copied-msg");
   var successTitle = document.getElementById("success-title");
 
+  var I18N = window.I18N || {};
+
+  function t(key, fallback) { return I18N[key] || fallback || key; }
+
   function showErr(msg) {
     if (!errBox) return;
-    errBox.textContent = msg;
-    errBox.style.display = msg ? "block" : "none";
+    errBox.textContent = msg || "";
+    if (msg) errBox.removeAttribute("hidden");
+    else errBox.setAttribute("hidden", "");
   }
 
   function getCsrf() {
-    var m = document.querySelector("meta[name=\"csrf-token\"]");
+    var m = document.querySelector('meta[name="csrf-token"]');
     return m ? m.content : "";
   }
 
@@ -40,8 +40,8 @@
   function switchTab(toLogin) {
     if (tabLogin)  tabLogin.classList.toggle("active", toLogin);
     if (tabReg)    tabReg.classList.toggle("active", !toLogin);
-    if (paneLogin) paneLogin.hidden = !toLogin;
-    if (paneReg)   paneReg.hidden   = toLogin;
+    if (paneLogin) { if (toLogin) paneLogin.removeAttribute("hidden"); else paneLogin.setAttribute("hidden", ""); }
+    if (paneReg)   { if (!toLogin) paneReg.removeAttribute("hidden"); else paneReg.setAttribute("hidden", ""); }
     showErr("");
   }
 
@@ -49,47 +49,45 @@
   if (tabReg)   tabReg.addEventListener("click",   function () { switchTab(false); });
 
   function onSuccess(token, username) {
-    // Persist token
     localStorage.setItem("ogx_jwt", token);
 
-    // Show token panel
-    if (paneLogin)  paneLogin.hidden  = true;
-    if (paneReg)    paneReg.hidden    = true;
-    if (paneToken)  paneToken.hidden  = false;
-    if (tabLogin)   tabLogin.style.display = "none";
-    if (tabReg)     tabReg.style.display   = "none";
-    if (errBox)     errBox.style.display   = "none";
+    // Hide tabs and form panes, show token pane
+    if (loginTabs) loginTabs.setAttribute("hidden", "");
+    if (paneLogin) paneLogin.setAttribute("hidden", "");
+    if (paneReg)   paneReg.setAttribute("hidden", "");
+    if (errBox)    errBox.setAttribute("hidden", "");
+    if (paneToken) paneToken.removeAttribute("hidden");
 
-    if (successTitle) successTitle.textContent = (window.I18N && window.I18N["auth.welcome_user"] || "Willkommen, ") + username;
-    if (tokenTa) tokenTa.value = token;
-
-    // Set continue link
+    if (successTitle) successTitle.textContent = t("auth.welcome_user", "Willkommen, ") + username;
+    if (tokenTa)     tokenTa.value = token;
     if (btnContinue) btnContinue.href = getNext();
+
+    // Auto-select textarea
+    if (tokenTa) { tokenTa.focus(); tokenTa.select(); }
   }
 
   // Copy button
-  if (btnCopy && tokenTa) {
+  if (btnCopy) {
     btnCopy.addEventListener("click", function () {
-      var val = tokenTa.value;
+      var val = tokenTa ? tokenTa.value : "";
       if (!val) return;
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(val).then(showCopied).catch(fallbackCopy);
-      } else {
-        fallbackCopy();
-      }
+      } else { fallbackCopy(); }
     });
   }
 
   function fallbackCopy() {
+    if (!tokenTa) return;
     tokenTa.select();
     try { document.execCommand("copy"); showCopied(); } catch (e) {}
   }
 
   function showCopied() {
-    if (btnCopy) btnCopy.textContent = "✓ Kopiert!";
+    if (btnCopy)   btnCopy.textContent = "✓ " + t("auth.copied", "Kopiert!");
     if (copiedMsg) copiedMsg.classList.add("visible");
-    setTimeout(function () {
-      if (btnCopy) btnCopy.textContent = window.I18N && window.I18N["auth.copy"] || "Token kopieren";
+    window.setTimeout(function () {
+      if (btnCopy)   btnCopy.textContent = t("auth.copy", "Token kopieren");
       if (copiedMsg) copiedMsg.classList.remove("visible");
     }, 2000);
   }
@@ -97,7 +95,7 @@
   function doLogin() {
     var username = document.getElementById("login-user").value.trim();
     var password = document.getElementById("login-pass").value;
-    if (!username || !password) { showErr("Bitte alle Felder ausfüllen."); return; }
+    if (!username || !password) { showErr(t("auth.fill_all", "Bitte alle Felder ausfüllen.")); return; }
     btnLogin.disabled = true;
     btnLogin.textContent = "…";
     fetch("/auth/login", {
@@ -110,22 +108,22 @@
       if (d.ok && d.token) {
         onSuccess(d.token, username);
       } else {
-        showErr(d.detail || d.error || d.message || "Login fehlgeschlagen.");
+        showErr(d.detail || d.error || d.message || t("auth.login_failed", "Login fehlgeschlagen."));
         btnLogin.disabled = false;
-        btnLogin.textContent = window.I18N && window.I18N["auth.login"] || "Login";
+        btnLogin.textContent = t("auth.login", "Login");
       }
     })
     .catch(function () {
-      showErr("Netzwerkfehler.");
+      showErr(t("auth.network_error", "Netzwerkfehler."));
       btnLogin.disabled = false;
-      btnLogin.textContent = window.I18N && window.I18N["auth.login"] || "Login";
+      btnLogin.textContent = t("auth.login", "Login");
     });
   }
 
   function doRegister() {
     var username = document.getElementById("reg-user").value.trim();
     var password = document.getElementById("reg-pass").value;
-    if (!username || !password) { showErr("Bitte alle Felder ausfüllen."); return; }
+    if (!username || !password) { showErr(t("auth.fill_all", "Bitte alle Felder ausfüllen.")); return; }
     btnRegister.disabled = true;
     btnRegister.textContent = "…";
     fetch("/auth/register", {
@@ -138,15 +136,15 @@
       if (d.ok && d.token) {
         onSuccess(d.token, username);
       } else {
-        showErr(d.detail || d.error || d.message || "Registrierung fehlgeschlagen.");
+        showErr(d.detail || d.error || d.message || t("auth.register_failed", "Registrierung fehlgeschlagen."));
         btnRegister.disabled = false;
-        btnRegister.textContent = window.I18N && window.I18N["auth.create_account"] || "Account erstellen";
+        btnRegister.textContent = t("auth.create_account", "Account erstellen");
       }
     })
     .catch(function () {
-      showErr("Netzwerkfehler.");
+      showErr(t("auth.network_error", "Netzwerkfehler."));
       btnRegister.disabled = false;
-      btnRegister.textContent = window.I18N && window.I18N["auth.create_account"] || "Account erstellen";
+      btnRegister.textContent = t("auth.create_account", "Account erstellen");
     });
   }
 
@@ -155,7 +153,8 @@
 
   document.addEventListener("keydown", function (e) {
     if (e.key !== "Enter") return;
-    if (paneLogin && !paneLogin.hidden) doLogin();
-    else if (paneReg && !paneReg.hidden) doRegister();
+    if (paneToken && !paneToken.hasAttribute("hidden")) return;
+    if (paneLogin && !paneLogin.hasAttribute("hidden")) doLogin();
+    else if (paneReg && !paneReg.hasAttribute("hidden")) doRegister();
   });
 })();

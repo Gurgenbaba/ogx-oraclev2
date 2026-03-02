@@ -329,6 +329,21 @@ async def api_leaderboard(request: Request):
         return JSONResponse({"ok": True, "leaderboard": board})
 
 
+@app.get("/static/i18n_data.js", include_in_schema=False)
+async def i18n_data_js(request: Request):
+    """Serve window.I18N as a JS file — CSP-safe alternative to inline <script>."""
+    lang = get_lang(request)
+    translations = get_translations_js(lang)
+    import json
+    content = "window.I18N = " + json.dumps(translations, ensure_ascii=False) + ";"
+    from fastapi.responses import Response
+    return Response(
+        content=content,
+        media_type="application/javascript",
+        headers={"Cache-Control": "no-cache"},
+    )
+
+
 @app.get("/healthz")
 async def healthz():
     return {"ok": True}
@@ -471,11 +486,12 @@ async def login_page(request: Request):
     return _template(request, "login.html", {})
 
 
-@app.get("/login/success", response_class=HTMLResponse)
+@app.get("/login/success")
 async def login_success_page(request: Request):
-    return _template(request, "login_success.html", {})
+    # Token is now shown inline on the login page; this route kept for compatibility
+    return RedirectResponse(url="/login", status_code=302)
 
-
+@app.get("/login/success_legacy", response_class=HTMLResponse)
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request, q: str = "", ally: str = "", tab: str = ""):
     q = (q or "").strip()

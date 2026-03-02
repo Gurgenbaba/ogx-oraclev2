@@ -185,5 +185,10 @@
   "auth.welcome_user": "Bienvenue, ",
   "auth.token_hint": "Copier et conserver — affiché une seule fois.",
   "auth.token_collector": "Nécessaire pour le script Collector → clic droit sur le bouton Oracle dans le jeu",
-  "auth.continue": "Aller à Oracle"
+  "auth.continue": "Aller à Oracle",
+  "auth.session_expired": "Session expirée",
+  "auth.fill_all": "Veuillez remplir tous les champs.",
+  "auth.login_failed": "Connexion échouée.",
+  "auth.register_failed": "Inscription échouée.",
+  "auth.network_error": "Erreur réseau."
 }

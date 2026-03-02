@@ -1,121 +1,99 @@
 {% extends "base.html" %}
-{% block title %}{{ t('prestige.title') }} — OGX Oracle{% endblock %}
 {% block head_extra %}
-<link rel="stylesheet" href="/static/prestige.css" />
+  <link rel="stylesheet" href="/static/prestige.css" />
 {% endblock %}
 
 {% block content %}
 <div class="psg-wrap">
-
-  <div class="psg-header">
-    <h1>🏆 {{ t('prestige.title') }}</h1>
-    <a href="/" class="psg-back">← Oracle</a>
+  <div class="psg-page-head">
+    <h1 class="psg-page-title">🏆 {{ t('prestige.title') }}</h1>
+    <a href="/" class="psg-back">← {{ t('nav.search') }}</a>
   </div>
 
-  <!-- Loading -->
+  <!-- Loading state -->
   <div id="psg-loading" class="psg-state">
+    <span class="psg-spinner">◌</span>
     {{ t('prestige.loading') }}
   </div>
 
-  <!-- Not logged in -->
+  <!-- Unauthenticated state -->
   <div id="psg-unauth" class="psg-state psg-hidden">
-    <div class="psg-state-icon">🔒</div>
-    <div>{{ t('auth.not_logged_in') }}</div>
-    <a href="/login" class="btn btn-sm mt-14">{{ t('auth.login') }}</a>
+    <div class="psg-unauth-icon">🔒</div>
+    <p>{{ t('prestige.login_required') }}</p>
+    <a href="/login?next=/prestige" class="btn btn-sm psg-login-btn">{{ t('auth.login') }}</a>
   </div>
 
-  <!-- Main content -->
+  <!-- Main content — populated by prestige.js -->
   <div id="psg-content" class="psg-hidden">
-    <div class="psg-grid">
 
-      <!-- ── Rank Hero ── -->
-      <div class="psg-hero">
-        <div id="psg-icon" class="psg-hero-icon">🪐</div>
-        <div class="psg-hero-info">
-          <div id="psg-rank-name" class="psg-rank-name"></div>
-          <div id="psg-op" class="psg-op"></div>
-          <div id="psg-scanner" class="psg-scanner-badge psg-hidden"></div>
-          <div id="psg-prog" class="psg-prog psg-hidden">
-            <div class="psg-prog-labels">
-              <span id="psg-next-name"></span>
-              <span id="psg-next-op"></span>
-            </div>
-            <div class="psg-prog-bar">
-              <div id="psg-prog-fill" class="psg-prog-fill"></div>
-            </div>
-          </div>
-          <div id="psg-maxrank" class="psg-maxrank psg-hidden">{{ t('prestige.max_rank') }}</div>
+    <!-- Hero: rank + OP -->
+    <div class="psg-hero" id="psg-hero">
+      <div class="psg-hero-rank" id="psg-rank-icon">🪐</div>
+      <div class="psg-hero-info">
+        <div class="psg-hero-name" id="psg-rank-name">Cadet</div>
+        <div class="psg-hero-op"><span id="psg-total-op">0</span> OP</div>
+        <div class="psg-hero-scanner" id="psg-scanner-title"></div>
+      </div>
+      <div class="psg-hero-prog">
+        <div class="psg-prog-bar">
+          <div class="psg-prog-fill" id="psg-prog-fill"></div>
         </div>
+        <div class="psg-prog-label" id="psg-prog-label"></div>
       </div>
-
-      <!-- ── Activity ── -->
-      <div class="psg-card">
-        <div class="psg-card-title">{{ t('prestige.activity') }}</div>
-        <div class="psg-stats">
-          <div class="psg-stat">
-            <div id="psg-expo" class="psg-stat-val">—</div>
-            <div class="psg-stat-lbl">{{ t('prestige.expeditions') }}</div>
-          </div>
-          <div class="psg-stat">
-            <div id="psg-scan" class="psg-stat-val">—</div>
-            <div class="psg-stat-lbl">{{ t('prestige.systems_scanned') }}</div>
-          </div>
-          <div class="psg-stat">
-            <div id="psg-smug" class="psg-stat-val">—</div>
-            <div class="psg-stat-lbl">{{ t('prestige.smuggler_codes') }}</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ── Streak ── -->
-      <div class="psg-card">
-        <div class="psg-card-title">{{ t('prestige.streak') }}</div>
-        <div class="psg-streak-row">
-          <div class="psg-streak-fire">🔥</div>
-          <div>
-            <div id="psg-streak" class="psg-streak-num">—</div>
-            <div class="psg-streak-lbl">{{ t('prestige.streak_current') }}</div>
-            <div id="psg-best" class="psg-streak-best"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ── Achievements ── -->
-      <div class="psg-card psg-full">
-        <div class="psg-card-title">{{ t('prestige.achievements') }}</div>
-        <div id="psg-ach-unlocked-label" class="psg-section-label psg-hidden"></div>
-        <div id="psg-ach-unlocked" class="psg-ach-list"></div>
-        <div id="psg-ach-locked-label" class="psg-section-label psg-hidden mt-14">{{ t('prestige.next_to_unlock') }}</div>
-        <div id="psg-ach-locked" class="psg-ach-list"></div>
-      </div>
-
-      <!-- ── Leaderboard ── -->
-      <div class="psg-card psg-full">
-        <div class="psg-card-title">{{ t('prestige.leaderboard') }}</div>
-        <div class="table-wrap">
-          <table class="psg-lb">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>{{ t('prestige.col_player') }}</th>
-                <th>{{ t('prestige.col_rank') }}</th>
-                <th class="psg-lb-op">{{ t('prestige.col_op') }}</th>
-                <th class="psg-lb-num">{{ t('prestige.col_expeditions') }}</th>
-                <th class="psg-lb-num">{{ t('prestige.col_systems') }}</th>
-              </tr>
-            </thead>
-            <tbody id="psg-lb-body">
-              <tr><td colspan="6" class="psg-no-data">{{ t('prestige.no_data') }}</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
     </div>
-  </div>
+
+    <!-- Stats grid -->
+    <div class="psg-stats">
+      <div class="psg-stat-card">
+        <div class="psg-stat-icon">📡</div>
+        <div class="psg-stat-val" id="psg-expo-count">0</div>
+        <div class="psg-stat-lbl">{{ t('prestige.expeditions') }}</div>
+      </div>
+      <div class="psg-stat-card">
+        <div class="psg-stat-icon">🔭</div>
+        <div class="psg-stat-val" id="psg-scan-count">0</div>
+        <div class="psg-stat-lbl">{{ t('prestige.scans') }}</div>
+      </div>
+      <div class="psg-stat-card">
+        <div class="psg-stat-icon">📦</div>
+        <div class="psg-stat-val" id="psg-smuggler-count">0</div>
+        <div class="psg-stat-lbl">{{ t('prestige.smuggler_codes') }}</div>
+      </div>
+      <div class="psg-stat-card">
+        <div class="psg-stat-icon">🔥</div>
+        <div class="psg-stat-val" id="psg-streak">0</div>
+        <div class="psg-stat-lbl">{{ t('prestige.streak') }}</div>
+      </div>
+    </div>
+
+    <!-- Achievements -->
+    <div class="psg-section">
+      <h2 class="psg-section-title">{{ t('prestige.achievements') }}</h2>
+      <div class="psg-ach-grid" id="psg-ach-unlocked"></div>
+      <div class="psg-ach-locked-title" id="psg-ach-locked-title"></div>
+      <div class="psg-ach-grid psg-ach-grid-locked" id="psg-ach-locked"></div>
+    </div>
+
+    <!-- Leaderboard -->
+    <div class="psg-section">
+      <h2 class="psg-section-title">{{ t('prestige.leaderboard') }}</h2>
+      <table class="psg-lb">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>{{ t('prestige.player') }}</th>
+            <th>{{ t('prestige.rank') }}</th>
+            <th>OP</th>
+          </tr>
+        </thead>
+        <tbody id="psg-lb-body"></tbody>
+      </table>
+    </div>
+
+  </div><!-- /#psg-content -->
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/prestige.js"></script>
+  <script src="/static/prestige.js" defer></script>
 {% endblock %}

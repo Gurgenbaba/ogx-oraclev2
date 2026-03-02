@@ -185,5 +185,10 @@
   "auth.welcome_user": "Welcome, ",
   "auth.token_hint": "Copy and store securely — only shown once.",
   "auth.token_collector": "Needed for the Collector script → right-click Oracle button in game",
-  "auth.continue": "Continue to Oracle"
+  "auth.continue": "Continue to Oracle",
+  "auth.session_expired": "Session expired",
+  "auth.fill_all": "Please fill in all fields.",
+  "auth.login_failed": "Login failed.",
+  "auth.register_failed": "Registration failed.",
+  "auth.network_error": "Network error."
 }
