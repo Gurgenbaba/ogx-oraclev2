@@ -17,11 +17,11 @@ from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse,
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from starlette.middleware.proxy_headers import ProxyHeadersMiddleware
+
 from sqlalchemy import select, func, delete, text, update
 from sqlalchemy.orm import selectinload
 
-# FIX: removed duplicate absolute import (from app.db import engine / from app.models import Base).
-# Only relative imports below.
 from .db import engine, AsyncSessionLocal, IS_SQLITE, IS_POSTGRES
 from .models import Base, Player, Colony, GalaxyScan, User
 from .prestige import (
@@ -49,14 +49,10 @@ from .security import (
 
 APP_DIR = Path(__file__).resolve().parent
 
-# Templates MUST exist before lifespan uses them
 templates = Jinja2Templates(directory=str(APP_DIR / "templates"))
 templates.env.globals["now_utc"] = lambda: datetime.now(timezone.utc)
 
 
-# ---------------------------------------------------------------------------
-# Lifespan (replaces deprecated @app.on_event)
-# ---------------------------------------------------------------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
@@ -69,25 +65,24 @@ async def lifespan(app: FastAPI):
         async with AsyncSessionLocal() as db:
             await seed_achievements(db)
     else:
-        # prod: verify DB reachable, then ensure prestige tables + achievements exist
         async with engine.begin() as conn:
             await conn.execute(text("SELECT 1"))
-            # Create any missing tables (safe: checkfirst=True via create_all)
             await conn.run_sync(Base.metadata.create_all)
         async with AsyncSessionLocal() as db:
             await seed_achievements(db)
-
     yield
 
 
 app = FastAPI(title="OGX Oracle", lifespan=lifespan)
 
+# --- IMPORTANT: Behind Railway proxy, we must respect X-Forwarded-* headers
+# Otherwise request.url.scheme may be wrong (http), which can break Secure cookies / CSRF behavior in strict browsers.
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
+
 # Static
 app.mount("/static", StaticFiles(directory=str(APP_DIR / "static")), name="static")
 
-# CORS:
-# NOTE: GM_xmlhttpRequest does not require CORS.
-# Keep minimal anyway for any browser-based fetch.
+# CORS: GM_xmlhttpRequest does not require CORS.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["https://uni1.playogx.com", "http://uni1.playogx.com"],
@@ -97,27 +92,18 @@ app.add_middleware(
 )
 
 # Security middlewares (order matters!)
-# Goal: RequestId + SecurityHeaders should be present even for early rejects (413/429/403).
-# Starlette middleware stack runs "outermost" last-added.
 app.add_middleware(MaxSizeMiddleware)
 app.add_middleware(SimpleRateLimitMiddleware)
 app.add_middleware(CsrfMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RequestIdLoggingMiddleware)
 
-# FIX: Removed @app.on_event("startup") block — it was deprecated, conflicted with
-# lifespan(), and bypassed the intentional prod guard (ran create_all in prod).
 
-
-# ---------------------------------------------------------------------------
-# Source constants
-# ---------------------------------------------------------------------------
 SRC_MANUAL_ADD = "manual_add"
 SRC_MANUAL_EDIT = "manual_edit"
 SRC_IMPORT = "import"
 SRC_HELPER = "helper"
 
-# Default planet name (English)
 DEFAULT_PLANET_NAME = "Colony"
 
 
@@ -128,22 +114,18 @@ def _template(request: Request, name: str, ctx: dict) -> HTMLResponse:
     csrf_token = getattr(request.state, "csrf_token", None) or request.cookies.get(CSRF_COOKIE) or ""
     lang = get_lang(request)
     base = {
-        "request":   request,
+        "request":    request,
         "csrf_token": csrf_token,
-        "t":         make_translator(lang),
-        "lang":      lang,
-        "i18n_js":   get_translations_js(lang),
-        "settings":  settings,
+        "t":          make_translator(lang),
+        "lang":       lang,
+        "i18n_js":    get_translations_js(lang),
+        "settings":   settings,
     }
     base.update(ctx)
     return templates.TemplateResponse(request, name, base)
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 def _utcnow_naive() -> datetime:
-    """Single source of truth: store & compute times as naive UTC."""
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
@@ -179,9 +161,6 @@ def _to_int_or_none(v: Any) -> Optional[int]:
 
 
 def _norm_username(u: str) -> str:
-    """
-    Normalize username consistently (DB expects this form).
-    """
     return (u or "").strip().lower()
 
 
@@ -228,17 +207,11 @@ def _sort_colonies(colonies: list[Colony]) -> list[Colony]:
 
 
 async def _ensure_single_main(db, player_id: int, main_colony_id: int) -> None:
-    """
-    FIX: Use targeted UPDATE instead of loading all colonies into memory.
-    Only updates rows where is_main needs to change, avoiding unnecessary bulk UPDATEs.
-    """
-    # Clear is_main on all OTHER colonies for this player
     await db.execute(
         update(Colony)
         .where(Colony.player_id == player_id, Colony.id != main_colony_id)
         .values(is_main=False)
     )
-    # Ensure the target colony is marked main
     await db.execute(
         update(Colony)
         .where(Colony.id == main_colony_id)
@@ -247,18 +220,8 @@ async def _ensure_single_main(db, player_id: int, main_colony_id: int) -> None:
 
 
 async def _upsert_galaxy_scan(db, *, galaxy: int, system: int, scanned_at: datetime, planets_found: int) -> None:
-    """
-    Dialect-safe UPSERT for GalaxyScan.
-    - SQLite: uses sqlite dialect insert..on_conflict_do_update
-    - Postgres: uses postgres dialect insert..on_conflict_do_update
-    - Other: fallback select/update
-
-    FIX: db.bind is always None in SQLAlchemy 2.x async sessions.
-    Use IS_SQLITE / IS_POSTGRES from db.py instead.
-    """
     if IS_SQLITE:
         from sqlalchemy.dialects.sqlite import insert as _ins
-
         stmt = (
             _ins(GalaxyScan)
             .values(galaxy=galaxy, system=system, scanned_at=scanned_at, planets_found=planets_found)
@@ -272,7 +235,6 @@ async def _upsert_galaxy_scan(db, *, galaxy: int, system: int, scanned_at: datet
 
     if IS_POSTGRES:
         from sqlalchemy.dialects.postgresql import insert as _ins
-
         stmt = (
             _ins(GalaxyScan)
             .values(galaxy=galaxy, system=system, scanned_at=scanned_at, planets_found=planets_found)
@@ -284,7 +246,6 @@ async def _upsert_galaxy_scan(db, *, galaxy: int, system: int, scanned_at: datet
         await db.execute(stmt)
         return
 
-    # Generic ORM fallback (other dialects)
     res = await db.execute(select(GalaxyScan).where(GalaxyScan.galaxy == galaxy, GalaxyScan.system == system))
     row = res.scalar_one_or_none()
     if row:
@@ -300,14 +261,12 @@ async def _upsert_galaxy_scan(db, *, galaxy: int, system: int, scanned_at: datet
 
 @app.get("/api/prestige")
 async def api_prestige(request: Request):
-    """JSON prestige summary + leaderboard for the current JWT user."""
     u, err = await _require_user_for_write(request)
     if err:
         return JSONResponse({"ok": False, "error": "unauthorized"}, status_code=401)
     async with AsyncSessionLocal() as db:
         summary = await get_prestige_summary(db, int(u.id))
         board   = await prestige_leaderboard(db, limit=20)
-        # Enrich leaderboard with usernames + is_current_user flag
         for entry in board:
             res = await db.execute(select(User).where(User.id == entry["user_id"]))
             usr = res.scalar_one_or_none()
@@ -318,10 +277,8 @@ async def api_prestige(request: Request):
 
 @app.get("/api/leaderboard")
 async def api_leaderboard(request: Request):
-    """Top 20 leaderboard — public."""
     async with AsyncSessionLocal() as db:
         board = await prestige_leaderboard(db, limit=20)
-        # Enrich with usernames
         for entry in board:
             res = await db.execute(select(User).where(User.id == entry["user_id"]))
             usr = res.scalar_one_or_none()
@@ -331,7 +288,6 @@ async def api_leaderboard(request: Request):
 
 @app.get("/static/i18n_data.js", include_in_schema=False)
 async def i18n_data_js(request: Request):
-    """Serve window.I18N as a JS file — CSP-safe alternative to inline <script>."""
     lang = get_lang(request)
     translations = get_translations_js(lang)
     import json
@@ -351,10 +307,6 @@ async def healthz():
 
 @app.get("/readyz")
 async def readyz():
-    """
-    Readiness = DB reachable.
-    Useful for prod deploys (Railway/Render/K8s).
-    """
     try:
         async with engine.begin() as conn:
             await conn.execute(text("SELECT 1"))
@@ -366,18 +318,53 @@ async def readyz():
 # ---------------------------------------------------------------------------
 # AUTH API (JWT)
 # ---------------------------------------------------------------------------
+
+async def _read_json_or_form(request: Request) -> dict:
+    """
+    Accept both:
+    - application/json
+    - application/x-www-form-urlencoded / multipart/form-data
+    This fixes "works on my PC but not on mobile" when the client sends a normal HTML form.
+    """
+    ctype = (request.headers.get("content-type") or "").lower()
+    if "application/json" in ctype:
+        try:
+            data = await request.json()
+            return data if isinstance(data, dict) else {}
+        except Exception:
+            return {}
+    # form fallback
+    try:
+        form = await request.form()
+        return dict(form)
+    except Exception:
+        return {}
+
+
+def _wants_json(request: Request) -> bool:
+    accept = (request.headers.get("accept") or "").lower()
+    ctype  = (request.headers.get("content-type") or "").lower()
+    return ("application/json" in accept) or ("application/json" in ctype) or (request.headers.get("x-requested-with") == "fetch")
+
+
 @app.post("/auth/register")
-async def auth_register(payload: dict = Body(...)):
+async def auth_register(request: Request):
     if not settings.allow_registration:
         return JSONResponse({"ok": False, "error": "registration_disabled"}, status_code=403)
 
+    payload = await _read_json_or_form(request)
     username = _norm_username(str(payload.get("username") or ""))
     password = str(payload.get("password") or "")
 
     if len(username) < settings.username_min_len or len(username) > settings.username_max_len:
-        return JSONResponse({"ok": False, "error": "invalid_username"}, status_code=400)
+        if _wants_json(request):
+            return JSONResponse({"ok": False, "error": "invalid_username"}, status_code=400)
+        return RedirectResponse(url="/login?err=invalid_username", status_code=303)
+
     if len(password) < settings.password_min_len:
-        return JSONResponse({"ok": False, "error": "password_too_short"}, status_code=400)
+        if _wants_json(request):
+            return JSONResponse({"ok": False, "error": "password_too_short"}, status_code=400)
+        return RedirectResponse(url="/login?err=password_too_short", status_code=303)
 
     async with AsyncSessionLocal() as db:
         make_admin = False
@@ -388,7 +375,9 @@ async def auth_register(payload: dict = Body(...)):
 
         exists = await db.execute(select(User).where(User.username == username))
         if exists.scalar_one_or_none():
-            return JSONResponse({"ok": False, "error": "username_taken"}, status_code=409)
+            if _wants_json(request):
+                return JSONResponse({"ok": False, "error": "username_taken"}, status_code=409)
+            return RedirectResponse(url="/login?err=username_taken", status_code=303)
 
         u = User(
             username=username,
@@ -402,18 +391,24 @@ async def auth_register(payload: dict = Body(...)):
         await db.refresh(u)
 
         token = create_access_token(user=u)
-        # Award daily login OP
+
         try:
             async with AsyncSessionLocal() as prestige_db:
                 await prestige_login(prestige_db, int(u.id), "oracle")
                 await prestige_db.commit()
         except Exception:
             pass
-        return {"ok": True, "token": token, "is_admin": u.is_admin, "username": u.username}
+
+        if _wants_json(request):
+            return {"ok": True, "token": token, "is_admin": u.is_admin, "username": u.username}
+
+        # HTML flow: redirect back to login with a hint (UI can display it)
+        return RedirectResponse(url="/login?registered=1", status_code=303)
 
 
 @app.post("/auth/login")
-async def auth_login(payload: dict = Body(...)):
+async def auth_login(request: Request):
+    payload = await _read_json_or_form(request)
     username = _norm_username(str(payload.get("username") or ""))
     password = str(payload.get("password") or "")
 
@@ -421,17 +416,31 @@ async def auth_login(payload: dict = Body(...)):
         res = await db.execute(select(User).where(User.username == username))
         u = res.scalar_one_or_none()
         if not u:
-            return JSONResponse({"ok": False, "error": "invalid_login"}, status_code=401)
+            if _wants_json(request):
+                return JSONResponse({"ok": False, "error": "invalid_login"}, status_code=401)
+            return RedirectResponse(url="/login?err=invalid_login", status_code=303)
+
         if not u.is_active:
-            return JSONResponse({"ok": False, "error": "user_disabled"}, status_code=403)
+            if _wants_json(request):
+                return JSONResponse({"ok": False, "error": "user_disabled"}, status_code=403)
+            return RedirectResponse(url="/login?err=user_disabled", status_code=303)
+
         if not verify_password(password, u.password_hash):
-            return JSONResponse({"ok": False, "error": "invalid_login"}, status_code=401)
+            if _wants_json(request):
+                return JSONResponse({"ok": False, "error": "invalid_login"}, status_code=401)
+            return RedirectResponse(url="/login?err=invalid_login", status_code=303)
 
         u.last_login_at = _utcnow_naive()
         await db.commit()
 
         token = create_access_token(user=u)
-        return {"ok": True, "token": token, "is_admin": u.is_admin, "username": u.username}
+
+        if _wants_json(request):
+            return {"ok": True, "token": token, "is_admin": u.is_admin, "username": u.username}
+
+        # HTML flow: redirect to /login so the page JS can pick up token via XHR if needed.
+        # (Better: set cookie here — but that change belongs in security.py to keep auth source-of-truth consistent.)
+        return RedirectResponse(url="/login?logged_in=1", status_code=303)
 
 
 @app.get("/auth/me")
@@ -447,13 +456,13 @@ async def auth_me(request: Request):
 # ---------------------------------------------------------------------------
 # Admin endpoints (moderation)
 # ---------------------------------------------------------------------------
+
 @app.post("/admin/player/{player_id}/delete")
 async def admin_delete_player(request: Request, player_id: int):
     async with AsyncSessionLocal() as db:
         _u, err = await require_jwt_user(request, db, require_admin=True)
         if err:
             return err
-
         await db.execute(delete(Player).where(Player.id == player_id))
         await db.commit()
         return {"ok": True}
@@ -465,7 +474,6 @@ async def admin_delete_colony(request: Request, colony_id: int):
         _u, err = await require_jwt_user(request, db, require_admin=True)
         if err:
             return err
-
         await db.execute(delete(Colony).where(Colony.id == colony_id))
         await db.commit()
         return {"ok": True}
@@ -477,16 +485,14 @@ async def admin_delete_colony(request: Request, colony_id: int):
 
 @app.get("/prestige", response_class=HTMLResponse)
 async def prestige_page(request: Request):
-    """Oracle Prestige profile page — client-side auth via /api/prestige."""
     return _template(request, "prestige.html", {"active_nav": "prestige"})
 
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
+    # FIX: removed unreachable stray return/redirect in your original file
     return _template(request, "login.html", {})
 
-
-    return RedirectResponse(url="/login", status_code=302)
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request, q: str = "", ally: str = "", tab: str = ""):
@@ -553,8 +559,6 @@ async def player_page(request: Request, name: str):
 async def import_ui(request: Request):
     qp = request.query_params
     summary = None
-
-    # show summary if at least one value is present
     if any(k in qp for k in ("imported", "updated", "players", "skipped")):
         summary = {
             "imported": qp.get("imported", "0"),
@@ -562,7 +566,6 @@ async def import_ui(request: Request):
             "players": qp.get("players", "0"),
             "skipped": qp.get("skipped", "0"),
         }
-
     return _template(request, "import.html", {"summary": summary, "active_nav": "import"})
 
 
@@ -608,10 +611,6 @@ async def galaxy_system(request: Request, galaxy: int, system: int):
     )
 
 
-# ---------------------------------------------------------------------------
-# Actions (manual) — requires JWT (account)
-# CSRF is validated by middleware, but not a replacement for auth.
-# ---------------------------------------------------------------------------
 async def _require_user_for_write(request: Request):
     async with AsyncSessionLocal() as db:
         u, err = await require_jwt_user(request, db, require_admin=False)
@@ -671,7 +670,7 @@ async def add_colony(
     galaxy: int = Form(...),
     system: int = Form(...),
     position: int = Form(...),
-    planet_name: str = Form(DEFAULT_PLANET_NAME),  # FIX: was "Colonie"
+    planet_name: str = Form(DEFAULT_PLANET_NAME),
     is_main: bool = Form(False),
     has_moon: bool = Form(False),
     moon_name: Optional[str] = Form(None),
@@ -683,7 +682,7 @@ async def add_colony(
         return err
 
     player_name = _norm_name(player_name)
-    planet_name = (planet_name or DEFAULT_PLANET_NAME).strip() or DEFAULT_PLANET_NAME  # FIX: was "Colonie"
+    planet_name = (planet_name or DEFAULT_PLANET_NAME).strip() or DEFAULT_PLANET_NAME
     note = (note or "").strip() or None
     moon_name = (moon_name or "").strip() or None
 
@@ -741,7 +740,7 @@ async def update_colony(
     request: Request,
     colony_id: int,
     player_name: str = Form(...),
-    planet_name: str = Form(DEFAULT_PLANET_NAME),  # FIX: was "Colonie"
+    planet_name: str = Form(DEFAULT_PLANET_NAME),
     is_main: bool = Form(False),
     has_moon: bool = Form(False),
     moon_name: Optional[str] = Form(None),
@@ -753,7 +752,7 @@ async def update_colony(
         return err
 
     player_name = _norm_name(player_name)
-    planet_name = (planet_name or DEFAULT_PLANET_NAME).strip() or DEFAULT_PLANET_NAME  # FIX: was "Colonie"
+    planet_name = (planet_name or DEFAULT_PLANET_NAME).strip() or DEFAULT_PLANET_NAME
     note = (note or "").strip() or None
     moon_name = (moon_name or "").strip() or None
 
@@ -805,8 +804,8 @@ async def delete_colony(request: Request, colony_id: int, player_name: str = For
 
 # ---------------------------------------------------------------------------
 # CSV Import / Export — hardened
-# Import requires JWT.
 # ---------------------------------------------------------------------------
+
 async def _read_upload_limited(file: UploadFile, limit: int) -> bytes:
     data = bytearray()
     while True:
@@ -830,7 +829,6 @@ async def import_csv(request: Request, file: UploadFile = File(...)):
     except ValueError:
         return PlainTextResponse("upload too large", status_code=413)
 
-    # FIX: renamed from `text` to `csv_text` to avoid shadowing SQLAlchemy's `text()` import
     csv_text = raw.decode("utf-8-sig", errors="replace")
     reader = csv.DictReader(io.StringIO(csv_text))
 
@@ -840,19 +838,10 @@ async def import_csv(request: Request, file: UploadFile = File(...)):
     rows_seen = 0
     rows_skipped = 0
 
-    # (g,s) -> set(positions)
     gs_planets = defaultdict(set)
-    # (g,s) -> newest naive UTC timestamp
     gs_last_seen: dict[tuple[int, int], datetime] = {}
 
     def _parse_dt(v: Any) -> Optional[datetime]:
-        """
-        Accept ISO timestamps like:
-        - 2026-02-23T02:26:57.524665
-        - 2026-02-23T02:26:57.524665Z
-        - 2026-02-23T02:26:57+00:00
-        Returns naive UTC datetime (tz stripped), matching app storage.
-        """
         try:
             s = (str(v or "")).strip()
             if not s:
@@ -872,13 +861,11 @@ async def import_csv(request: Request, file: UploadFile = File(...)):
             if rows_seen > settings.max_csv_rows:
                 return PlainTextResponse("too many rows", status_code=413)
 
-            # Normalize player like ingest
             player_name = _norm_player_name(row.get("player") or row.get("name") or "")[:64]
             if not player_name:
                 rows_skipped += 1
                 continue
 
-            # coords
             try:
                 galaxy = int(str(row.get("galaxy") or row.get("g") or "0").strip() or 0)
                 system = int(str(row.get("system") or row.get("s") or "0").strip() or 0)
@@ -887,12 +874,10 @@ async def import_csv(request: Request, file: UploadFile = File(...)):
                 rows_skipped += 1
                 continue
 
-            # strict validation
             if galaxy <= 0 or system <= 0 or position < 1 or position > 30:
                 rows_skipped += 1
                 continue
 
-            # Track GalaxyScan from CSV
             gs_key = (galaxy, system)
             gs_planets[gs_key].add(position)
 
@@ -902,8 +887,6 @@ async def import_csv(request: Request, file: UploadFile = File(...)):
                 if prev is None or seen_from_csv > prev:
                     gs_last_seen[gs_key] = seen_from_csv
 
-            # fields
-            # FIX: default fallback changed from "Colonie" to DEFAULT_PLANET_NAME ("Colony")
             planet_name = (row.get("planet_name") or row.get("planet") or DEFAULT_PLANET_NAME).strip()
             planet_name = (planet_name[: settings.max_field_len] or DEFAULT_PLANET_NAME)
 
@@ -920,7 +903,6 @@ async def import_csv(request: Request, file: UploadFile = File(...)):
             ally = (row.get("ally") or "").strip()
             ally = (ally[:32] or None)
 
-            # Keep timestamp if present, else now
             seen = seen_from_csv or _utcnow_naive()
 
             p, created = await get_or_create_player(db, player_name)
@@ -971,7 +953,6 @@ async def import_csv(request: Request, file: UploadFile = File(...)):
                     await _ensure_single_main(db, p.id, c.id)
                 imported += 1
 
-        # Build GalaxyScan entries from CSV (so /galaxy works immediately)
         fallback_now = _utcnow_naive()
         for (g, s), pos_set in gs_planets.items():
             scanned_at = gs_last_seen.get((g, s)) or fallback_now
@@ -1056,9 +1037,9 @@ async def export_csv():
 
 
 # ---------------------------------------------------------------------------
-# Ingest (Helper Sync -> Local Tracker)
-# JWT Bearer preferred, API key fallback (transition).
+# Ingest
 # ---------------------------------------------------------------------------
+
 @app.post("/ingest/galaxy")
 async def ingest_galaxy(request: Request, payload: dict = Body(...)):
     galaxy = int(payload.get("galaxy", 0) or 0)
@@ -1094,7 +1075,6 @@ async def ingest_galaxy(request: Request, payload: dict = Body(...)):
             if not player_name:
                 continue
 
-            # FIX: default fallback changed from "Colonie" to DEFAULT_PLANET_NAME ("Colony")
             planet_name = (r.get("planet_name") or DEFAULT_PLANET_NAME).strip()[:128] or DEFAULT_PLANET_NAME
             ally = (r.get("ally") or "").strip()[:32] or None
             has_moon = bool(r.get("has_moon", False))
@@ -1146,7 +1126,6 @@ async def ingest_galaxy(request: Request, payload: dict = Body(...)):
 
         await _upsert_galaxy_scan(db, galaxy=galaxy, system=system, scanned_at=now, planets_found=len(rows))
 
-        # Award OP for new unique system scanned
         new_systems = 1 if (imported > 0 or updated > 0) else 0
         if new_systems > 0:
             try:
@@ -1154,7 +1133,7 @@ async def ingest_galaxy(request: Request, payload: dict = Body(...)):
                 if u:
                     await prestige_scan(db, int(u.id), new_systems)
             except Exception:
-                pass  # never block ingest on prestige errors
+                pass
 
         await db.commit()
 
