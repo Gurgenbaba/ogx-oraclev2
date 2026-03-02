@@ -1,0 +1,265 @@
+/* app/static/login.css — Login/Register page */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-0, #040d1a);
+  font-family: var(--font-body, 'Inter', sans-serif);
+}
+
+/* ── Wrapper ── */
+.login-wrap {
+  width: 100%;
+  max-width: 400px;
+  padding: 24px 16px;
+}
+
+/* ── Logo ── */
+.login-logo {
+  text-align: center;
+  margin-bottom: 28px;
+}
+.login-logo a { text-decoration: none; }
+.brand-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.brand-row .ogx {
+  font-family: var(--font-head, 'Space Grotesk', sans-serif);
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--text-0, #e8f4ff);
+  letter-spacing: -.02em;
+}
+.brand-row .oracle {
+  font-family: var(--font-head, 'Space Grotesk', sans-serif);
+  font-size: 1.6rem;
+  font-weight: 400;
+  color: var(--acc-0, #00d4ff);
+  letter-spacing: -.02em;
+}
+.tagline {
+  display: block;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: .7rem;
+  color: var(--text-3, rgba(180,210,255,.3));
+  letter-spacing: .12em;
+}
+
+/* ── Card ── */
+.login-card {
+  background: rgba(4,16,36,.92);
+  border: 1px solid rgba(0,212,255,.14);
+  border-radius: 18px;
+  padding: 28px 28px 24px;
+  box-shadow:
+    0 20px 60px rgba(0,0,0,.5),
+    0 0 0 1px rgba(0,212,255,.04),
+    inset 0 1px 0 rgba(0,212,255,.08);
+}
+
+/* ── Tabs ── */
+.login-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 22px;
+  background: rgba(0,0,0,.25);
+  border-radius: 10px;
+  padding: 4px;
+}
+.login-tab {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-3, rgba(180,210,255,.4));
+  font-family: var(--font-head, 'Space Grotesk', sans-serif);
+  font-size: .82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.login-tab.active {
+  background: rgba(0,212,255,.12);
+  color: var(--acc-0, #00d4ff);
+}
+.login-tab:hover:not(.active) {
+  color: var(--text-1, rgba(220,235,255,.8));
+}
+
+/* ── Fields ── */
+.login-field {
+  margin-bottom: 14px;
+}
+.login-field-last { margin-bottom: 20px; }
+.login-field label {
+  display: block;
+  font-size: .75rem;
+  font-weight: 600;
+  color: var(--text-2, rgba(180,210,255,.55));
+  margin-bottom: 6px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.login-field input {
+  width: 100%;
+  padding: 10px 14px;
+  background: rgba(0,0,0,.35);
+  border: 1px solid rgba(0,212,255,.14);
+  border-radius: 10px;
+  color: var(--text-0, #e8f4ff);
+  font-family: var(--font-body, 'Inter', sans-serif);
+  font-size: .9rem;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.login-field input:focus {
+  border-color: rgba(0,212,255,.4);
+  box-shadow: 0 0 0 3px rgba(0,212,255,.08);
+}
+.login-field input::placeholder { color: rgba(180,210,255,.2); }
+
+/* ── Policy ── */
+.login-policy {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: .7rem;
+  color: var(--text-3, rgba(180,210,255,.3));
+  margin-bottom: 16px;
+}
+
+/* ── Buttons ── */
+.login-btn {
+  display: block;
+  width: 100%;
+  padding: 11px 16px;
+  border-radius: 11px;
+  border: 1px solid rgba(0,212,255,.3);
+  background: rgba(0,212,255,.12);
+  color: var(--acc-0, #00d4ff);
+  font-family: var(--font-head, 'Space Grotesk', sans-serif);
+  font-size: .9rem;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  letter-spacing: .04em;
+  transition: background .15s, border-color .15s, box-shadow .15s;
+  margin-bottom: 10px;
+}
+.login-btn:hover {
+  background: rgba(0,212,255,.2);
+  border-color: rgba(0,212,255,.5);
+  box-shadow: 0 4px 16px rgba(0,212,255,.15);
+}
+.login-btn-ghost {
+  background: rgba(0,0,0,.2);
+  border-color: rgba(0,212,255,.12);
+  color: var(--text-2, rgba(180,210,255,.55));
+}
+.login-btn-ghost:hover {
+  background: rgba(0,212,255,.06);
+  border-color: rgba(0,212,255,.25);
+  color: var(--acc-0, #00d4ff);
+}
+
+/* ── Error ── */
+.login-error {
+  background: rgba(255,60,60,.08);
+  border: 1px solid rgba(255,60,60,.2);
+  border-radius: 8px;
+  padding: 9px 13px;
+  color: #ff8080;
+  font-size: .82rem;
+  margin-bottom: 14px;
+  display: none;
+}
+.login-error.visible { display: block; }
+
+/* ── Token pane ── */
+.success-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.success-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(0,212,255,.12);
+  border: 1px solid rgba(0,212,255,.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--acc-0, #00d4ff);
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+.success-title {
+  font-family: var(--font-head, 'Space Grotesk', sans-serif);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-0, #e8f4ff);
+}
+.success-sub {
+  font-size: .78rem;
+  color: var(--text-3, rgba(180,210,255,.35));
+  margin-top: 2px;
+}
+.token-box {
+  margin-bottom: 16px;
+}
+.token-box-label {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: .68rem;
+  color: rgba(0,212,255,.4);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.token-box-ta {
+  width: 100%;
+  height: 80px;
+  background: rgba(0,0,0,.4);
+  border: 1px solid rgba(0,212,255,.12);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: rgba(180,230,255,.8);
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: .72rem;
+  resize: none;
+  outline: none;
+  word-break: break-all;
+  line-height: 1.5;
+}
+.token-box-hint {
+  font-size: .7rem;
+  color: var(--text-3, rgba(180,210,255,.3));
+  margin-top: 6px;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+}
+.success-actions {
+  display: flex;
+  gap: 8px;
+}
+.success-actions .login-btn { flex: 1; margin-bottom: 0; }
+.success-copied {
+  text-align: center;
+  font-size: .78rem;
+  color: var(--acc-0, #00d4ff);
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  margin-top: 8px;
+  min-height: 18px;
+  opacity: 0;
+  transition: opacity .2s;
+}
+.success-copied.visible { opacity: 1; }
