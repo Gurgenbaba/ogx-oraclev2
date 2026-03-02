@@ -1,0 +1,348 @@
+/* =========================================================
+   OGX Oracle — Prestige Page
+   CSP-safe: no inline styles, external file only
+   Uses app.css design tokens via CSS variables
+   ========================================================= */
+
+/* ── Layout ── */
+.psg-wrap {
+  max-width: 960px;
+  margin: 0 auto;
+  padding-bottom: 48px;
+}
+
+.psg-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 22px;
+}
+
+.psg-header h1 {
+  font-family: var(--font-head);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-0);
+  margin: 0;
+}
+
+.psg-back {
+  font-size: 12px;
+  color: var(--acc-0);
+  text-decoration: none;
+  opacity: 0.75;
+  transition: opacity var(--ease);
+}
+
+.psg-back:hover { opacity: 1; }
+
+.psg-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 680px) {
+  .psg-grid { grid-template-columns: 1fr; }
+}
+
+.psg-full { grid-column: 1 / -1; }
+
+/* ── States ── */
+.psg-state {
+  text-align: center;
+  padding: 80px 0;
+  color: var(--text-2);
+  font-size: 14px;
+}
+
+.psg-state-icon {
+  font-size: 42px;
+  margin-bottom: 14px;
+}
+
+/* ── Rank Hero ── */
+.psg-hero {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  background: linear-gradient(135deg, var(--surface-1), var(--surface-0));
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-xl);
+  padding: 24px 28px;
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(9px);
+}
+
+.psg-hero-icon {
+  font-size: 52px;
+  line-height: 1;
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4));
+}
+
+.psg-hero-info { flex: 1; min-width: 0; }
+
+.psg-rank-name {
+  font-family: var(--font-head);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text-0);
+  line-height: 1.1;
+}
+
+.psg-op {
+  font-size: 13px;
+  color: var(--acc-1);
+  margin-top: 4px;
+}
+
+.psg-scanner-badge {
+  display: inline-block;
+  font-size: 11px;
+  padding: 3px 10px;
+  background: var(--acc-2);
+  color: var(--acc-1);
+  border: 1px solid var(--acc-3);
+  border-radius: 20px;
+  margin-top: 6px;
+  font-weight: 600;
+}
+
+.psg-hidden { display: none; }
+
+/* ── Progress ── */
+.psg-prog {
+  margin-top: 14px;
+}
+
+.psg-prog-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-3);
+  margin-bottom: 5px;
+}
+
+.psg-prog-bar {
+  height: 6px;
+  background: var(--bg-0);
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid var(--line-1);
+}
+
+.psg-prog-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--acc-0), var(--acc-1));
+  transition: width 0.6s ease;
+}
+
+.psg-maxrank {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--warn);
+  font-weight: 600;
+}
+
+/* ── Cards ── */
+.psg-card {
+  background: linear-gradient(180deg, var(--surface-1), var(--surface-0));
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-xl);
+  padding: 20px 22px;
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(9px);
+}
+
+.psg-card-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.9px;
+  text-transform: uppercase;
+  color: var(--acc-1);
+  opacity: 0.7;
+  margin: 0 0 16px;
+}
+
+/* ── Stats row ── */
+.psg-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.psg-stat {
+  background: var(--bg-0);
+  border: 1px solid var(--line-0);
+  border-radius: var(--r-md);
+  padding: 12px 10px;
+  text-align: center;
+}
+
+.psg-stat-val {
+  font-family: var(--font-head);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-0);
+  line-height: 1.1;
+}
+
+.psg-stat-lbl {
+  font-size: 10px;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 3px;
+}
+
+/* ── Streak ── */
+.psg-streak-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.psg-streak-fire { font-size: 36px; }
+
+.psg-streak-num {
+  font-family: var(--font-head);
+  font-size: 38px;
+  font-weight: 800;
+  color: var(--warn);
+  line-height: 1;
+}
+
+.psg-streak-lbl {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+
+.psg-streak-best {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 6px;
+}
+
+/* ── Achievements ── */
+.psg-ach-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.psg-ach-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  font-size: 12px;
+}
+
+.psg-ach-item.unlocked {
+  background: var(--good-bg);
+  border: 1px solid var(--good-line);
+}
+
+.psg-ach-item.locked {
+  background: var(--bg-0);
+  border: 1px solid var(--line-0);
+  opacity: 0.55;
+}
+
+.psg-ach-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+  width: 28px;
+  text-align: center;
+}
+
+.psg-ach-name {
+  font-weight: 600;
+  color: var(--text-0);
+}
+
+.psg-ach-desc { color: var(--text-2); font-size: 11px; }
+
+.psg-ach-tag {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--good);
+  white-space: nowrap;
+}
+
+.psg-ach-op {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--warn);
+  white-space: nowrap;
+}
+
+.psg-section-label {
+  font-size: 11px;
+  color: var(--text-2);
+  margin-bottom: 10px;
+}
+
+/* ── Leaderboard ── */
+.psg-lb {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.psg-lb th {
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-3);
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--line-1);
+}
+
+.psg-lb td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--line-0);
+  color: var(--text-0);
+}
+
+.psg-lb tr:last-child td { border-bottom: none; }
+.psg-lb tr:hover td { background: rgba(91,163,245,0.04); }
+
+.psg-lb-rank { width: 32px; color: var(--text-3); font-weight: 700; }
+.psg-lb-op   { text-align: right; color: var(--acc-1); font-weight: 700; }
+.psg-lb-num  { text-align: right; color: var(--text-2); }
+
+.psg-lb-badge {
+  display: inline-block;
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: var(--acc-2);
+  color: var(--acc-1);
+  border: 1px solid var(--acc-3);
+}
+
+.psg-lb-you {
+  font-size: 10px;
+  color: var(--acc-1);
+  margin-left: 5px;
+}
+
+.psg-medal-1 { color: #f59e0b; }
+.psg-medal-2 { color: #94a3b8; }
+.psg-medal-3 { color: #cd7f32; }
+
+.psg-no-data {
+  text-align: center;
+  color: var(--text-3);
+  padding: 24px;
+}
