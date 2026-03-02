@@ -9,13 +9,8 @@
     <h1 class="psg-page-title">🏆 {{ t('prestige.title') }}</h1>
     <a href="/" class="psg-back">← {{ t('nav.search') }}</a>
   </div>
-<div class="psg-loading-text">{{ t('prestige.loading') }}</div>
-  </div>
-<p>{{ t('prestige.login_required') }}</p>
-    <a href="/login?next=/prestige" class="btn btn-sm psg-login-btn">{{ t('auth.login') }}</a>
-  </div>
 
-  <!-- Main content — populated by prestige.js -->
+  <!-- Content — populated by prestige.js -->
   <div id="psg-content">
 
     <!-- Hero: rank + OP -->
@@ -87,5 +82,5 @@
 {% endblock %}
 
 {% block scripts %}
-  <script src="/static/prestige.js?v=4" defer></script>
+  <script src="/static/prestige.js?v=5" defer></script>
 {% endblock %}
