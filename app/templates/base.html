@@ -34,6 +34,21 @@
         <a id="nav-prestige" href="/prestige" class="nav-prestige-link {% if active_nav == 'prestige' %}active{% endif %}" hidden>🏆 {{ t('prestige.title') }}</a>
         <span id="auth-status" class="muted fs-13" aria-live="polite">{{ t('auth.not_logged_in') }}</span>
         <span id="auth-username" class="auth-username" hidden></span>
+        <!-- Token popup (opens on username click) -->
+        <div id="token-popup-backdrop" class="token-popup-backdrop"></div>
+        <div id="token-popup" class="token-popup" role="dialog" aria-label="Bearer Token">
+          <div class="token-popup-header">
+            <span class="token-popup-title">Bearer JWT Token</span>
+            <button class="token-popup-close" id="token-popup-close" type="button" aria-label="Schließen">×</button>
+          </div>
+          <textarea class="token-popup-ta" id="token-popup-ta" readonly spellcheck="false" aria-label="JWT Token"></textarea>
+          <div class="token-popup-actions">
+            <button class="token-popup-btn" id="token-popup-copy" type="button">{{ t('auth.copy') }}</button>
+            <a class="token-popup-btn" href="/prestige" id="token-popup-prestige">🏆 Prestige</a>
+          </div>
+          <div class="token-popup-hint">{{ t('auth.token_hint') }}</div>
+          <div class="token-popup-copied" id="token-popup-copied"></div>
+        </div>
         <a id="auth-open" class="btn btn-sm" href="/login">{{ t('auth.login') }}</a>
         <button id="auth-logout" class="btn btn-sm ghost" type="button" hidden>{{ t('auth.logout') }}</button>
       </div>

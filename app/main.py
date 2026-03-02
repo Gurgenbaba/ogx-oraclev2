@@ -301,10 +301,10 @@ async def _upsert_galaxy_scan(db, *, galaxy: int, system: int, scanned_at: datet
 @app.get("/api/prestige")
 async def api_prestige(request: Request):
     """JSON prestige summary + leaderboard for the current JWT user."""
+    u, err = await _require_user_for_write(request)
+    if err:
+        return JSONResponse({"ok": False, "error": "unauthorized"}, status_code=401)
     async with AsyncSessionLocal() as db:
-        u, err = await _require_user_for_write(request, db)
-        if err:
-            return JSONResponse({"ok": False, "error": "unauthorized"}, status_code=401)
         summary = await get_prestige_summary(db, int(u.id))
         board   = await prestige_leaderboard(db, limit=20)
         # Enrich leaderboard with usernames + is_current_user flag
@@ -486,12 +486,8 @@ async def login_page(request: Request):
     return _template(request, "login.html", {})
 
 
-@app.get("/login/success")
-async def login_success_page(request: Request):
-    # Token is now shown inline on the login page; this route kept for compatibility
     return RedirectResponse(url="/login", status_code=302)
 
-@app.get("/login/success_legacy", response_class=HTMLResponse)
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request, q: str = "", ally: str = "", tab: str = ""):
     q = (q or "").strip()
