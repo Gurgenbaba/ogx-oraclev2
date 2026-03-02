@@ -600,9 +600,22 @@ async def galaxy_system(request: Request, galaxy: int, system: int):
 # Actions (manual) — requires JWT (account)
 # CSRF is validated by middleware, but not a replacement for auth.
 # ---------------------------------------------------------------------------
-async def _require_user_for_write(request: Request):
-    async with AsyncSessionLocal() as db:
+async def _require_user_for_write(request: Request, db=None):
+    """
+    Require a logged-in JWT user for write operations.
+
+    - If `db` is provided (AsyncSession), reuse it.
+    - Otherwise create a short-lived session.
+    This avoids nested sessions and allows endpoints to control transactions.
+    """
+    if db is not None:
         u, err = await require_jwt_user(request, db, require_admin=False)
+        if err:
+            return None, err
+        return u, None
+
+    async with AsyncSessionLocal() as db2:
+        u, err = await require_jwt_user(request, db2, require_admin=False)
         if err:
             return None, err
         return u, None
@@ -1065,10 +1078,19 @@ async def ingest_galaxy(request: Request, payload: dict = Body(...)):
     created_players = 0
     now = _utcnow_naive()
 
+    ingest_user_id: Optional[int] = None
+
     async with AsyncSessionLocal() as db:
         auth_err = await require_ingest_auth(request, db)
         if auth_err:
             return auth_err
+
+        # Resolve ingest user once (store only the id so we don't keep ORM objects around)
+        try:
+            ingest_user = await _get_ingest_user(request, db)
+            ingest_user_id = int(ingest_user.id) if ingest_user else None
+        except Exception:
+            ingest_user_id = None  # never block ingest
 
         for r in rows:
             try:
@@ -1082,7 +1104,6 @@ async def ingest_galaxy(request: Request, payload: dict = Body(...)):
             if not player_name:
                 continue
 
-            # FIX: default fallback changed from "Colonie" to DEFAULT_PLANET_NAME ("Colony")
             planet_name = (r.get("planet_name") or DEFAULT_PLANET_NAME).strip()[:128] or DEFAULT_PLANET_NAME
             ally = (r.get("ally") or "").strip()[:32] or None
             has_moon = bool(r.get("has_moon", False))
@@ -1135,14 +1156,13 @@ async def ingest_galaxy(request: Request, payload: dict = Body(...)):
         await _upsert_galaxy_scan(db, galaxy=galaxy, system=system, scanned_at=now, planets_found=len(rows))
         await db.commit()
 
-    # Award OP for new unique system scans
-    if imported > 0:
+    # Award OP for new unique system scans (never block ingest)
+    if imported > 0 and ingest_user_id is not None:
         try:
-            ingest_user = await _get_ingest_user(request, db)
-            if ingest_user:
-                await prestige_scan(db, int(ingest_user.id), 1)  # +1 unique system
-                await db.commit()
+            async with AsyncSessionLocal() as prestige_db:
+                await prestige_scan(prestige_db, ingest_user_id, 1)  # +1 unique system
+                await prestige_db.commit()
         except Exception:
-            pass  # never block ingest on prestige errors
+            pass
 
     return {"ok": True, "imported": imported, "updated": updated, "players_created": created_players}
