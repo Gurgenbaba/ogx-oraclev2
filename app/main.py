@@ -1055,7 +1055,47 @@ async def export_csv():
         headers={"Content-Disposition": "attachment; filename=ogx-export.csv"},
     )
 
+async def _get_ingest_user(request: Request, db):
+    """
+    Resolve the user behind an ingest request.
 
+    Priority:
+    1) JWT Bearer (preferred)
+    2) API key fallback (optional) -> maps to a configured "system" user
+
+    Returns:
+        User | None
+    Never raises.
+    """
+    # 1) Prefer JWT user
+    try:
+        u, err = await require_jwt_user(request, db, require_admin=False)
+        if not err and u:
+            return u
+    except Exception:
+        pass
+
+    # 2) Optional API-key fallback
+    api_key = request.headers.get("x-ogx-api-key") or ""
+    cfg_key = getattr(settings, "ingest_api_key", None)  # might not exist in older settings
+    if not cfg_key or api_key != cfg_key:
+        return None
+
+    # Map API-key requests to a configured user id if available
+    cfg_uid = getattr(settings, "ingest_user_id", None)
+    try:
+        if cfg_uid is not None:
+            res = await db.execute(select(User).where(User.id == int(cfg_uid), User.is_active == True))
+            return res.scalar_one_or_none()
+
+        # fallback: first active admin (or None if none exists)
+        res = await db.execute(
+            select(User).where(User.is_active == True, User.is_admin == True).order_by(User.id.asc()).limit(1)
+        )
+        return res.scalar_one_or_none()
+    except Exception:
+        return None
+        
 # ---------------------------------------------------------------------------
 # Ingest (Helper Sync -> Local Tracker)
 # JWT Bearer preferred, API key fallback (transition).
