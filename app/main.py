@@ -1145,16 +1145,17 @@ async def ingest_galaxy(request: Request, payload: dict = Body(...)):
                 imported += 1
 
         await _upsert_galaxy_scan(db, galaxy=galaxy, system=system, scanned_at=now, planets_found=len(rows))
-        await db.commit()
 
-    # Award OP for new unique system scans
-    if imported > 0:
-        try:
-            ingest_user = await _get_ingest_user(request, db)
-            if ingest_user:
-                await prestige_scan(db, int(ingest_user.id), 1)  # +1 unique system
-                await db.commit()
-        except Exception:
-            pass  # never block ingest on prestige errors
+        # Award OP for new unique system scanned
+        new_systems = 1 if (imported > 0 or updated > 0) else 0
+        if new_systems > 0:
+            try:
+                u, _err = await require_jwt_user(request, db, require_admin=False)
+                if u:
+                    await prestige_scan(db, int(u.id), new_systems)
+            except Exception:
+                pass  # never block ingest on prestige errors
+
+        await db.commit()
 
     return {"ok": True, "imported": imported, "updated": updated, "players_created": created_players}
