@@ -172,12 +172,23 @@ def check_achievements(prestige: UserPrestige, unlocked_slugs: set) -> List[str]
 # ─── Async service functions ──────────────────────────────────────────────────
 
 async def _get_or_create_prestige(db: AsyncSession, user_id: int) -> UserPrestige:
+    """
+    IMPORTANT: Must be robust against older rows / NULL columns.
+    If prestige_rank/scanner_title are NULL, we recompute them.
+    """
     result = await db.execute(select(UserPrestige).where(UserPrestige.user_id == user_id))
     prestige = result.scalar_one_or_none()
     if not prestige:
         prestige = UserPrestige(user_id=user_id)
         db.add(prestige)
         await db.flush()
+
+    # Harden legacy/NULL data:
+    if not prestige.prestige_rank:
+        prestige.prestige_rank = get_rank(int(prestige.total_op or 0))
+    if prestige.scanner_title is None:
+        prestige.scanner_title = get_scanner_title(int(prestige.scan_count or 0))
+
     return prestige
 
 
@@ -227,10 +238,12 @@ async def award_op(
         total += amount
     if total == 0:
         return 0
+
     prestige = await _get_or_create_prestige(db, user_id)
     prestige.total_op += total
-    prestige.prestige_rank = get_rank(prestige.total_op)
+    prestige.prestige_rank = get_rank(int(prestige.total_op or 0))
     prestige.updated_at = now
+
     await _unlock_achievements(db, user_id, prestige)
     await db.flush()
     return total
@@ -238,7 +251,7 @@ async def award_op(
 
 async def handle_expo_import(db: AsyncSession, user_id: int, new_count: int) -> Dict[str, Any]:
     prestige = await _get_or_create_prestige(db, user_id)
-    awards = op_for_expo_import(new_count, prestige.expo_count)
+    awards = op_for_expo_import(new_count, int(prestige.expo_count or 0))
     prestige.expo_count += new_count
     op_total = await award_op(db, user_id, awards, "expedition")
     return {
@@ -252,9 +265,9 @@ async def handle_expo_import(db: AsyncSession, user_id: int, new_count: int) -> 
 
 async def handle_galaxy_scan(db: AsyncSession, user_id: int, new_unique_systems: int) -> Dict[str, Any]:
     prestige = await _get_or_create_prestige(db, user_id)
-    awards = op_for_galaxy_scan(new_unique_systems, prestige.scan_count)
+    awards = op_for_galaxy_scan(new_unique_systems, int(prestige.scan_count or 0))
     prestige.scan_count += new_unique_systems
-    prestige.scanner_title = get_scanner_title(prestige.scan_count)
+    prestige.scanner_title = get_scanner_title(int(prestige.scan_count or 0))
     op_total = await award_op(db, user_id, awards, "oracle")
     return {
         "op_awarded": op_total,
@@ -279,18 +292,20 @@ async def handle_daily_login(db: AsyncSession, user_id: int, source_app: str) ->
     today = date.today()
     last = prestige.last_active_date.date() if prestige.last_active_date else None
     awards, new_streak = op_for_daily_login(
-        last, today, prestige.current_streak,
-        prestige.streak_milestone_7_claimed, prestige.streak_milestone_30_claimed,
+        last, today, int(prestige.current_streak or 0),
+        bool(prestige.streak_milestone_7_claimed), bool(prestige.streak_milestone_30_claimed),
     )
     if not awards:
         return {"op_awarded": 0, "streak": prestige.current_streak, "already_claimed": True}
 
     prestige.current_streak = new_streak
-    prestige.longest_streak = max(prestige.longest_streak, new_streak)
+    prestige.longest_streak = max(int(prestige.longest_streak or 0), new_streak)
     prestige.last_active_date = datetime.utcnow()
     for reason, _ in awards:
-        if reason == "streak_7d":  prestige.streak_milestone_7_claimed = True
-        if reason == "streak_30d": prestige.streak_milestone_30_claimed = True
+        if reason == "streak_7d":
+            prestige.streak_milestone_7_claimed = True
+        if reason == "streak_30d":
+            prestige.streak_milestone_30_claimed = True
 
     op_total = await award_op(db, user_id, awards, source_app)
     return {
@@ -304,13 +319,26 @@ async def handle_daily_login(db: AsyncSession, user_id: int, source_app: str) ->
 
 async def get_prestige_summary(db: AsyncSession, user_id: int) -> Dict[str, Any]:
     prestige = await _get_or_create_prestige(db, user_id)
-    next_rank = get_next_rank(prestige.total_op)
 
-    # Progress to next rank as percentage
+    total_op = int(prestige.total_op or 0)
+    if not prestige.prestige_rank:
+        prestige.prestige_rank = get_rank(total_op)
+
+    next_rank = get_next_rank(total_op)
+
+    # Progress to next rank as percentage (safe)
     if next_rank:
-        current_rank_op = next(t for n, t in RANKS if n == prestige.prestige_rank)
-        next_rank_op = current_rank_op + next_rank[1]
-        progress_pct = round((prestige.total_op - current_rank_op) / next_rank[1] * 100)
+        # current rank threshold
+        current_rank_op = 0
+        for n, t in RANKS:
+            if n == prestige.prestige_rank:
+                current_rank_op = t
+                break
+
+        needed = max(1, int(next_rank[1]))  # avoid div by 0
+        progress_raw = (total_op - current_rank_op) / needed * 100
+        progress_pct = int(round(progress_raw))
+        progress_pct = max(0, min(100, progress_pct))
     else:
         progress_pct = 100
 
@@ -346,14 +374,14 @@ async def get_prestige_summary(db: AsyncSession, user_id: int) -> Dict[str, Any]
 
     return {
         "user_id":        user_id,
-        "total_op":       prestige.total_op,
+        "total_op":       total_op,
         "prestige_rank":  prestige.prestige_rank,
         "scanner_title":  prestige.scanner_title,
-        "expo_count":     prestige.expo_count,
-        "scan_count":     prestige.scan_count,
-        "smuggler_count": prestige.smuggler_count,
-        "current_streak": prestige.current_streak,
-        "longest_streak": prestige.longest_streak,
+        "expo_count":     int(prestige.expo_count or 0),
+        "scan_count":     int(prestige.scan_count or 0),
+        "smuggler_count": int(prestige.smuggler_count or 0),
+        "current_streak": int(prestige.current_streak or 0),
+        "longest_streak": int(prestige.longest_streak or 0),
         "progress_pct":   progress_pct,
         "next_rank":      {"name": next_rank[0], "op_needed": next_rank[1]} if next_rank else None,
         "achievements_unlocked": unlocked,
@@ -371,11 +399,11 @@ async def get_leaderboard(db: AsyncSession, limit: int = 20) -> List[Dict]:
         {
             "rank":          i + 1,
             "user_id":       r.user_id,
-            "total_op":      r.total_op,
-            "prestige_rank": r.prestige_rank,
+            "total_op":      int(r.total_op or 0),
+            "prestige_rank": r.prestige_rank or get_rank(int(r.total_op or 0)),
             "scanner_title": r.scanner_title,
-            "expo_count":    r.expo_count,
-            "scan_count":    r.scan_count,
+            "expo_count":    int(r.expo_count or 0),
+            "scan_count":    int(r.scan_count or 0),
         }
         for i, r in enumerate(result.scalars().all())
     ]
