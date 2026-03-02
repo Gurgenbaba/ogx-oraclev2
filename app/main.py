@@ -630,9 +630,9 @@ async def galaxy_system(request: Request, galaxy: int, system: int):
 # Actions (manual) — requires JWT (account)
 # CSRF is validated by middleware, but not a replacement for auth.
 # ---------------------------------------------------------------------------
-async def _require_user_for_write(request: Request):
+async def _require_user_for_write(request: Request, require_admin: bool = False):
     async with AsyncSessionLocal() as db:
-        u, err = await require_jwt_user(request, db, require_admin=False)
+        u, err = await require_jwt_user(request, db, require_admin=require_admin)
         if err:
             return None, err
         return u, None
@@ -640,7 +640,7 @@ async def _require_user_for_write(request: Request):
 
 @app.post("/player/add")
 async def add_player(request: Request, name: str = Form(...)):
-    _u, err = await _require_user_for_write(request)
+    _u, err = await _require_user_for_write(request, require_admin=True)
     if err:
         return err
 
@@ -661,7 +661,7 @@ async def add_player(request: Request, name: str = Form(...)):
 
 @app.post("/player/{name}/astro")
 async def set_astro(request: Request, name: str, astro_level: int = Form(...)):
-    _u, err = await _require_user_for_write(request)
+    _u, err = await _require_user_for_write(request, require_admin=True)
     if err:
         return err
 
@@ -696,7 +696,7 @@ async def add_colony(
     travel_hint_minutes: Optional[int] = Form(None),
     note: Optional[str] = Form(None),
 ):
-    _u, err = await _require_user_for_write(request)
+    _u, err = await _require_user_for_write(request, require_admin=True)
     if err:
         return err
 
@@ -766,7 +766,7 @@ async def update_colony(
     travel_hint_minutes: Optional[int] = Form(None),
     note: Optional[str] = Form(None),
 ):
-    _u, err = await _require_user_for_write(request)
+    _u, err = await _require_user_for_write(request, require_admin=True)
     if err:
         return err
 
@@ -800,7 +800,7 @@ async def update_colony(
 
 @app.post("/colony/{colony_id}/delete")
 async def delete_colony(request: Request, colony_id: int, player_name: str = Form(...)):
-    _u, err = await _require_user_for_write(request)
+    _u, err = await _require_user_for_write(request, require_admin=True)
     if err:
         return err
 
@@ -839,7 +839,7 @@ async def _read_upload_limited(file: UploadFile, limit: int) -> bytes:
 
 @app.post("/import")
 async def import_csv(request: Request, file: UploadFile = File(...)):
-    _u, err = await _require_user_for_write(request)
+    _u, err = await _require_user_for_write(request, require_admin=True)
     if err:
         return err
 
