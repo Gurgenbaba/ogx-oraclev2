@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         OGX Oracle – Galaxy Collector
 // @namespace    ogx-oracle
-// @version      2.1.0
+// @version      2.2.0
 // @description  Collects Galaxy View data and sends to OGX Oracle. Supports DE/EN/FR OGame servers.
 // @match        https://uni1.playogx.com/*
 // @match        http://uni1.playogx.com/*
@@ -280,26 +280,19 @@
     tr.id = "ogx-oracle-menu-btn";
     tr.style.cursor = "pointer";
     tr.innerHTML = `
-      <th colspan="1" width="20px"> ≡ </th>
-      <th id="ogx-oracle-th" style="background:rgb(53,69,102);box-shadow:rgba(0,0,0,0.1) 0px 4px 30px;">
-        <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:space-between;">
-          <span id="ogx-oracle-label" style="color:#5bc8ff;">${L().menu_label}</span>
-          <span style="color:#5bc8ff;font-size:10px;opacity:.7;">↗</span>
-        </div>
-      </th>`;
+      <th colspan="1" width="20px">&#8801;</th>
+      <th id="ogx-oracle-th">OGX Oracle</th>`;
 
     const th = tr.querySelector("#ogx-oracle-th");
-    const label = tr.querySelector("#ogx-oracle-label");
-    th.addEventListener("mouseover", () => { th.style.background = "#5b7bc0"; th.style.boxShadow = "0 6px 40px rgba(0,0,0,0.3)"; });
-    th.addEventListener("mouseout",  () => { th.style.background = "rgb(53,69,102)"; th.style.boxShadow = "rgba(0,0,0,0.1) 0px 4px 30px"; });
+    th.addEventListener("mouseover", () => { tr.style.opacity = "0.75"; });
+    th.addEventListener("mouseout",  () => { tr.style.opacity = "1"; });
     tr.addEventListener("click", () => window.open(oracleUrl("/"), "_blank"));
     tr.addEventListener("contextmenu", (e) => {
       e.preventDefault();
       openSetup();
-      const orig = label.textContent;
-      label.textContent = `✓ ${L().setup_ok}`;
-      label.style.color = "#00ff9d";
-      setTimeout(() => { label.textContent = orig; label.style.color = "#5bc8ff"; }, 2000);
+      const orig = th.textContent;
+      th.textContent = "✓ Setup OK";
+      setTimeout(() => { th.textContent = orig; }, 2000);
     });
     anchor.insertAdjacentElement("afterend", tr);
   }
