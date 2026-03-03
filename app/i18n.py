@@ -1,4 +1,4 @@
-# app/i18n.py
+﻿# app/i18n.py
 """
 Minimal i18n for OGX Expedition.
 Supports: en, de, fr
@@ -26,10 +26,6 @@ def _load(lang: str) -> dict:
         return {}
     return json.loads(f.read_text("utf-8"))
 
-
-from urllib.parse import parse_qs
-
-from urllib.parse import parse_qs
 
 def get_lang(request) -> str:
     """
@@ -92,3 +88,4 @@ def get_translations_js(lang: str) -> dict:
     fallback = _load(DEFAULT) if lang != DEFAULT else {}
     merged   = {**fallback, **strings}
     return merged
+

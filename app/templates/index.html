@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% set active_nav = "search" %}
 {% block content %}
 <section class="card">
@@ -54,7 +54,7 @@
     {% if ally %}
       {% if players %}
         <div class="row between wrap-flex gap-12">
-          <div class="result-count muted">{{ players|length }} {{ t('index.players_in_ally', ally=ally) }}</div>
+          <div class="result-count muted">{{ players|length }} {{ t('index.players_in_ally', n=players|length, ally=ally) }}</div>
           <a class="btn btn-sm ghost" href="/?tab=ally">{{ t('index.all_alliances') }}</a>
         </div>
         <div class="grid">

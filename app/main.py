@@ -1,4 +1,4 @@
-# app/main.py
+﻿# app/main.py
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
@@ -502,9 +502,6 @@ async def prestige_page(request: Request):
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
     return _template(request, "login.html", {})
-
-
-    return RedirectResponse(url="/login", status_code=302)
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request, q: str = "", ally: str = "", tab: str = ""):
