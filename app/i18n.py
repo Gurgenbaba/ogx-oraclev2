@@ -24,7 +24,7 @@ def _load(lang: str) -> dict:
     f = LANG_DIR / f"{lang}.json"
     if not f.exists():
         return {}
-    return json.loads(f.read_text("utf-8"))
+    return json.loads(f.read_text("utf-8-sig"))
 
 
 def get_lang(request) -> str:
@@ -88,4 +88,5 @@ def get_translations_js(lang: str) -> dict:
     fallback = _load(DEFAULT) if lang != DEFAULT else {}
     merged   = {**fallback, **strings}
     return merged
+
 
