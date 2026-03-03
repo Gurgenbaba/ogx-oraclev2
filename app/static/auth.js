@@ -43,7 +43,7 @@
     var s = qs("#auth-status"), u = qs("#auth-username"), o = qs("#auth-open"), l = qs("#auth-logout"), p = qs("#nav-prestige");
     if (s) s.setAttribute("hidden", ""); if (u) { u.removeAttribute("hidden"); u.textContent = "\uD83C\uDFC6 " + username; }
     if (o) o.setAttribute("hidden", ""); if (l) l.removeAttribute("hidden"); if (p) p.removeAttribute("hidden");
-    if (IS_LOGIN_PAGE) setTimeout(function() { window.location.href = "/"; }, 300);
+    if (IS_LOGIN_PAGE) setTimeout(function() { window.location.href = "/?app=1"; }, 300);
   }
 
   function setLoggedOut(expired) {
@@ -55,10 +55,12 @@
   }
 
   function refreshStatus() {
+    var onLanding = window.location.pathname === "/" && window.location.search.indexOf("app=1") < 0 && !window.location.search.includes("q=") && !window.location.search.includes("ally=");
     var token = getToken(); if (!token) { setLoggedOut(false); return; }
     fetch("/auth/me", { headers: { "Authorization": "Bearer " + token } })
       .then(function(r) { return r.ok ? r.json() : null; })
-      .then(function(d) { if (!d || !d.ok) throw new Error(); setLoggedIn(d.is_admin ? d.username + " \u2605" : d.username); })
+      .then(function(d) { if (!d || !d.ok) throw new Error(); if (onLanding) { window.location.replace("/?app=1"); return; }
+        setLoggedIn(d.is_admin ? d.username + " \u2605" : d.username); })
       .catch(function() { clearToken(); setLoggedOut(true); });
   }
 
@@ -77,3 +79,4 @@
   function init() { bindPopup(); bindHamburger(); bindLogout(); refreshStatus(); }
   if (document.readyState === "loading") { document.addEventListener("DOMContentLoaded", init); } else { init(); }
 })();
+

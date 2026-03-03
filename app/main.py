@@ -504,7 +504,15 @@ async def login_page(request: Request):
     return _template(request, "login.html", {})
 
 @app.get("/", response_class=HTMLResponse)
-async def index(request: Request, q: str = "", ally: str = "", tab: str = ""):
+async def index(request: Request, q: str = "", ally: str = "", tab: str = "", app: str = ""):
+    # If no ?app=1 and no bearer token in Authorization header -> show landing page.
+    # JWT lives only in localStorage, so we use ?app=1 as the signal that
+    # auth.js has verified the token and is redirecting the authenticated user.
+    has_token = bool(request.headers.get("authorization", "").strip())
+    is_app_route = (app == "1")
+    if not has_token and not is_app_route and not q and not ally:
+        return _template(request, "landing.html", {})
+
     q = (q or "").strip()
     ally = (ally or "").strip()
     async with AsyncSessionLocal() as db:
@@ -1174,3 +1182,4 @@ async def ingest_galaxy(request: Request, payload: dict = Body(...)):
         await db.commit()
 
     return {"ok": True, "imported": imported, "updated": updated, "players_created": created_players}
+

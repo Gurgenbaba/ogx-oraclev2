@@ -28,7 +28,7 @@
     if (paneToken) paneToken.removeAttribute("hidden");
     if (successTitle) successTitle.textContent = t("auth.welcome_user", "Welcome!") + " " + username;
     if (tokenTa) { tokenTa.value = token; tokenTa.focus(); tokenTa.select(); }
-    if (btnContinue) btnContinue.href = getNext();
+    if (btnContinue) btnContinue.href = "/?app=1";
   }
   function showCopied() {
     var lbl = t("auth.copied", "Copied!"), copyLbl = t("auth.copy", "Copy Token");
@@ -59,3 +59,4 @@
   if (btnRegister) btnRegister.addEventListener("click", doRegister);
   document.addEventListener("keydown", function(e) { if (e.key !== "Enter") return; if (paneToken && !paneToken.hasAttribute("hidden")) return; if (paneLogin && !paneLogin.hasAttribute("hidden")) doLogin(); else if (paneReg && !paneReg.hasAttribute("hidden")) doRegister(); });
 })();
+
