@@ -90,3 +90,4 @@ def get_translations_js(lang: str) -> dict:
     return merged
 
 
+
