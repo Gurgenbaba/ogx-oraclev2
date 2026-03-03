@@ -19,7 +19,7 @@
   <a class="skip-link" href="#main">{{ t('nav.skip') }}</a>
   <header class="topbar">
     <div class="wrap topbar-inner">
-      <a class="brand" href="/" aria-label="OGX Oracle">
+      <a class="brand" href="/?app=1" aria-label="OGX Oracle">
         <span class="brand-mark">OGX</span><span class="brand-rest"> Oracle</span>
       </a>
       <!-- Mobile hamburger -->
@@ -27,22 +27,21 @@
         <span></span><span></span><span></span>
       </button>
       <nav class="nav" id="main-nav">
-        <a href="/" class="{% if active_nav == 'search' %}active{% endif %}" {% if active_nav == 'search' %}aria-current="page"{% endif %}>{{ t('nav.search') }}</a>
+        <a href="/?app=1" class="{% if active_nav == 'search' %}active{% endif %}" {% if active_nav == 'search' %}aria-current="page"{% endif %}>{{ t('nav.search') }}</a>
         <a href="/galaxy" class="{% if active_nav == 'galaxy' %}active{% endif %}" {% if active_nav == 'galaxy' %}aria-current="page"{% endif %}>{{ t('nav.galaxy') }}</a>
         <a href="/import-ui" class="{% if active_nav == 'import' %}active{% endif %}" {% if active_nav == 'import' %}aria-current="page"{% endif %}>{{ t('nav.import') }}</a>
         <a href="/export.csv">{{ t('nav.export') }}</a>
         <a href="https://ogx-expedition-production.up.railway.app" target="_blank" class="muted nav-expedition">{{ t('nav.expedition') }}</a>
       </nav>
       <div class="authbox" id="authbox">
-        <a id="nav-prestige" href="/prestige" class="nav-prestige-link {% if active_nav == 'prestige' %}active{% endif %}" hidden>🏆 {{ t('prestige.title') }}</a>
-        <span id="auth-status" class="muted fs-13" aria-live="polite"></span>
+        <a id="nav-prestige" href="/prestige" class="nav-prestige-link {% if active_nav == 'prestige' %}active{% endif %}" hidden>{{ t('prestige.title') }}</a>
         <span id="auth-username" class="auth-username" hidden></span>
         <!-- Token popup -->
         <div id="token-popup-backdrop" class="token-popup-backdrop"></div>
         <div id="token-popup" class="token-popup" role="dialog" aria-label="Bearer Token">
           <div class="token-popup-header">
             <span class="token-popup-title">Bearer JWT Token</span>
-            <button class="token-popup-close" id="token-popup-close" type="button" aria-label="Schließen">×</button>
+            <button class="token-popup-close" id="token-popup-close" type="button" aria-label="{{ t('auth.close') }}">×</button>
           </div>
           <textarea class="token-popup-ta" id="token-popup-ta" readonly spellcheck="false" aria-label="JWT Token"></textarea>
           <div class="token-popup-actions">
@@ -51,7 +50,6 @@
           <div class="token-popup-hint">{{ t('auth.token_hint') }}</div>
           <div class="token-popup-copied" id="token-popup-copied"></div>
         </div>
-        <a id="auth-open" class="btn btn-sm" href="/login" hidden>{{ t('auth.login') }}</a>
         <button id="auth-logout" class="btn btn-sm ghost" type="button" hidden>{{ t('auth.logout') }}</button>
       </div>
     </div>
