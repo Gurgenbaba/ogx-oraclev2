@@ -12,7 +12,7 @@
   function t(key, fallback) { return I18N[key] || fallback || key; }
   function showErr(msg) { if (!errBox) return; errBox.textContent = msg || ""; if (msg) errBox.removeAttribute("hidden"); else errBox.setAttribute("hidden", ""); }
   function getCsrf() { var m = document.querySelector('meta[name="csrf-token"]'); return m ? m.content : ""; }
-  function getNext() { return new URLSearchParams(window.location.search).get("next") || "/"; }
+  function getNext() { return new URLSearchParams(window.location.search).get("next") || "/?app=1"; }
   function switchTab(toLogin) {
     if (tabLogin) tabLogin.classList.toggle("active", toLogin); if (tabReg) tabReg.classList.toggle("active", !toLogin);
     if (paneLogin) { if (toLogin) paneLogin.removeAttribute("hidden"); else paneLogin.setAttribute("hidden", ""); }
@@ -59,4 +59,5 @@
   if (btnRegister) btnRegister.addEventListener("click", doRegister);
   document.addEventListener("keydown", function(e) { if (e.key !== "Enter") return; if (paneToken && !paneToken.hasAttribute("hidden")) return; if (paneLogin && !paneLogin.hasAttribute("hidden")) doLogin(); else if (paneReg && !paneReg.hasAttribute("hidden")) doRegister(); });
 })();
+
 
