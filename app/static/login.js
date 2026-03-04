@@ -35,7 +35,7 @@
   }
 
   function getNext() {
-    return new URLSearchParams(window.location.search).get("next") || "/";
+    return new URLSearchParams(window.location.search).get("next") || "/?app=1";
   }
 
   function switchTab(toLogin) {
@@ -65,8 +65,8 @@
     if (tokenTa)     tokenTa.value = token;
     if (btnContinue) btnContinue.href = next;
 
-    // Auto-redirect after 1.2s — no manual click needed, works on mobile
-    window.setTimeout(function() { window.location.replace(next); }, 1200);
+    // Direct navigation — no setTimeout (blocked by iOS Safari)
+    window.location.href = next;
   }
 
   // Copy button
