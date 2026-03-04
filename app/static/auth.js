@@ -4,12 +4,8 @@
   "use strict";
 
   var TOKEN_KEY = "ogx_jwt";
-  var path = window.location.pathname;
-  var IS_LOGIN_PAGE   = path === "/login";
-  var IS_LANDING_PAGE = path === "/" && window.location.search.indexOf("app=1") < 0
-                        && window.location.search.indexOf("q=") < 0
-                        && window.location.search.indexOf("ally=") < 0;
-  var IS_APP_PAGE = !IS_LOGIN_PAGE && !IS_LANDING_PAGE;
+  var IS_INDEX  = window.location.pathname === "/";
+  var IS_LOGIN  = window.location.pathname === "/login";
 
   function qs(sel) { return document.querySelector(sel); }
   function getCsrfToken() {
@@ -19,9 +15,23 @@
   function getToken() { return (localStorage.getItem(TOKEN_KEY) || "").trim(); }
   function clearToken() { localStorage.removeItem(TOKEN_KEY); }
 
-  // ── i18n helper ────────────────────────────────────────────────
   function t(key, fallback) {
     return (window.I18N && window.I18N[key]) || fallback || key;
+  }
+
+  // ── Landing / App visibility (index page only) ─────────────────
+  function showLanding() {
+    var landing = qs("#landing-section");
+    var app     = qs("#app-section");
+    if (landing) landing.style.display = "";
+    if (app)     app.style.display = "none";
+  }
+
+  function showApp() {
+    var landing = qs("#landing-section");
+    var app     = qs("#app-section");
+    if (landing) landing.style.display = "none";
+    if (app)     app.style.display = "";
   }
 
   // ── Token Popup ────────────────────────────────────────────────
@@ -112,26 +122,15 @@
     var logoutEl   = qs("#auth-logout");
     var prestigeEl = qs("#nav-prestige");
 
-    // username without emoji — plain text only
-    if (usernameEl) {
-      usernameEl.removeAttribute("hidden");
-      usernameEl.textContent = username;
-    }
+    if (usernameEl) { usernameEl.removeAttribute("hidden"); usernameEl.textContent = username; }
     if (logoutEl)   logoutEl.removeAttribute("hidden");
     if (prestigeEl) prestigeEl.removeAttribute("hidden");
 
-    // Landing page: eingeloggt -> sofort zur App
-    if (IS_LANDING_PAGE) {
-      window.location.replace("/?app=1");
-      return;
-    }
-    // /login: nach erfolgreichem Login -> App
-    if (IS_LOGIN_PAGE) {
-      setTimeout(function() { window.location.replace("/?app=1"); }, 300);
-    }
+    if (IS_INDEX) showApp();
+    if (IS_LOGIN) setTimeout(function() { window.location.replace("/"); }, 300);
   }
 
-  function setLoggedOut(expired) {
+  function setLoggedOut() {
     var usernameEl = qs("#auth-username");
     var logoutEl   = qs("#auth-logout");
     var prestigeEl = qs("#nav-prestige");
@@ -141,8 +140,10 @@
     if (prestigeEl) prestigeEl.setAttribute("hidden", "");
     closePopup();
 
-    // App-Seiten: Token ungültig/abgelaufen -> zurück zur Landing Page
-    if (IS_APP_PAGE) {
+    if (IS_INDEX) {
+      showLanding();
+    } else if (!IS_LOGIN) {
+      // Other protected pages (galaxy, import etc.) -> back to index (landing)
       window.location.replace("/");
     }
   }
@@ -150,7 +151,7 @@
   // ── Status check ───────────────────────────────────────────────
   function refreshStatus() {
     var token = getToken();
-    if (!token) { setLoggedOut(false); return; }
+    if (!token) { setLoggedOut(); return; }
     fetch("/auth/me", { headers: { "Authorization": "Bearer " + token } })
       .then(function(r) { return r.ok ? r.json() : null; })
       .then(function(d) {
@@ -158,7 +159,7 @@
         var label = d.is_admin ? d.username + " \u2605" : d.username;
         setLoggedIn(label);
       })
-      .catch(function() { clearToken(); setLoggedOut(true); });
+      .catch(function() { clearToken(); setLoggedOut(); });
   }
 
   // ── Logout ─────────────────────────────────────────────────────
@@ -167,7 +168,7 @@
     if (!btn) return;
     btn.addEventListener("click", function() {
       clearToken();
-      setLoggedOut(false);
+      setLoggedOut();
     });
   }
 

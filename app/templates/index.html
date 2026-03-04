@@ -1,6 +1,86 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% set active_nav = "search" %}
 {% block content %}
+
+{# ── Landing section: shown by auth.js when NOT logged in ── #}
+<section id="landing-section" style="display:none">
+  <div class="landing-hero">
+    <a class="landing-brand" href="/">
+      <span class="ogx">OGX</span>
+      <span class="oracle">Oracle</span>
+    </a>
+    <div class="landing-tagline">// Galaxy Intelligence System</div>
+    <p class="landing-desc">{{ t('landing.desc') }}</p>
+    <div class="landing-features">
+      <span class="landing-feat">&#x1F50D; {{ t('landing.feat.search') }}</span>
+      <span class="landing-feat">&#x1F30C; {{ t('landing.feat.galaxy') }}</span>
+      <span class="landing-feat">&#x1F3C6; {{ t('landing.feat.prestige') }}</span>
+      <span class="landing-feat">&#x1F4E5; {{ t('landing.feat.import') }}</span>
+    </div>
+  </div>
+
+  <div class="landing-card-wrap">
+    <div class="login-card">
+      <div class="login-tabs" id="login-tabs">
+        <button class="login-tab active" id="tab-login" type="button">{{ t('auth.login') }}</button>
+        <button class="login-tab" id="tab-register" type="button">{{ t('auth.register') }}</button>
+      </div>
+      <div class="login-error" id="auth-error"></div>
+
+      <div id="pane-login">
+        <div class="login-field">
+          <label for="login-user">{{ t('auth.username') }}</label>
+          <input type="text" id="login-user" autocomplete="username"
+                 placeholder="{{ t('auth.username') | lower }}" autofocus maxlength="32" />
+        </div>
+        <div class="login-field login-field-last">
+          <label for="login-pass">{{ t('auth.password') }}</label>
+          <input type="password" id="login-pass" autocomplete="current-password"
+                 placeholder="{{ t('auth.password') | lower }}" />
+        </div>
+        <button class="login-btn" id="btn-login" type="button">{{ t('auth.login') }}</button>
+      </div>
+
+      <div id="pane-register" hidden>
+        <div class="login-policy">// {{ t('auth.pw_policy', n=(settings.password_min_len if settings else 10)) }}</div>
+        <div class="login-field">
+          <label for="reg-user">{{ t('auth.username') }}</label>
+          <input type="text" id="reg-user" autocomplete="username"
+                 placeholder="{{ t('auth.username') | lower }}" maxlength="32" />
+        </div>
+        <div class="login-field login-field-last">
+          <label for="reg-pass">{{ t('auth.password') }}</label>
+          <input type="password" id="reg-pass" autocomplete="new-password"
+                 placeholder="{{ t('auth.password') | lower }}" />
+        </div>
+        <button class="login-btn login-btn-ghost" id="btn-register" type="button">{{ t('auth.create_account') }}</button>
+      </div>
+
+      <div id="pane-token" hidden>
+        <div class="success-head">
+          <div class="success-icon">&#x2713;</div>
+          <div>
+            <div class="success-title" id="success-title">{{ t('auth.welcome_user') }}</div>
+            <div class="success-sub">{{ t('auth.token_collector') }}</div>
+          </div>
+        </div>
+        <div class="token-box">
+          <div class="token-box-label">Bearer JWT Token</div>
+          <textarea class="token-box-ta" id="token-ta" readonly spellcheck="false"></textarea>
+          <div class="token-box-hint">{{ t('auth.token_hint') }}</div>
+        </div>
+        <div class="success-actions">
+          <button class="login-btn" id="btn-copy" type="button">{{ t('auth.copy') }}</button>
+          <a class="login-btn login-btn-ghost" href="/" id="btn-continue">{{ t('auth.continue') }} &#x2192;</a>
+        </div>
+        <div class="success-copied" id="copied-msg">&#x2713; {{ t('auth.copied') }}</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{# ── App section: shown by auth.js when logged in ── #}
+<div id="app-section" style="display:none">
 <section class="card">
   <div class="row between head-row wrap-flex gap-12">
     <div>
@@ -91,4 +171,11 @@
     {% endif %}
   {% endif %}
 </section>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<link rel="stylesheet" href="/static/login.css" />
+<script src="/static/login.js" defer></script>
 {% endblock %}
