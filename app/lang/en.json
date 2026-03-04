@@ -210,5 +210,10 @@
   "system.last_scanned": "Last scanned",
   "system.not_scanned": "Not scanned",
   "system.occupied": "Occupied",
-  "system.planets": "Planets"
+  "system.planets": "Planets",
+  "landing.desc": "Track players, alliances & colonies across the OGX universe. Scan systems, manage prestige and stay one step ahead.",
+  "landing.feat.search": "Player Search",
+  "landing.feat.galaxy": "Galaxy Scanner",
+  "landing.feat.prestige": "Prestige System",
+  "landing.feat.import": "CSV Import"
 }

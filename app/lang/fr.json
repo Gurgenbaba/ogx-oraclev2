@@ -210,5 +210,10 @@
   "system.last_scanned": "Dernier scan",
   "system.not_scanned": "Non scann\u00e9",
   "system.occupied": "Occup\u00e9",
-  "system.planets": "Plan\u00e8tes"
+  "system.planets": "Plan\u00e8tes",
+  "landing.desc": "Suivez joueurs, alliances & colonies dans l\u2019univers OGX. Scannez les syst\u00e8mes, g\u00e9rez le prestige et gardez une longueur d\u2019avance.",
+  "landing.feat.search": "Recherche joueur",
+  "landing.feat.galaxy": "Scanner galaxie",
+  "landing.feat.prestige": "Syst\u00e8me prestige",
+  "landing.feat.import": "Import CSV"
 }

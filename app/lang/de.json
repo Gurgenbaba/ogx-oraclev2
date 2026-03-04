@@ -210,5 +210,10 @@
   "system.last_scanned": "Zuletzt gescannt",
   "system.not_scanned": "Nicht gescannt",
   "system.occupied": "Besetzt",
-  "system.planets": "Planeten"
+  "system.planets": "Planeten",
+  "landing.desc": "Verfolge Spieler, Allianzen & Kolonien im OGX-Universum. Scanne Systeme, verwalte Prestige und bleib einen Schritt voraus.",
+  "landing.feat.search": "Spielersuche",
+  "landing.feat.galaxy": "Galaxy-Scanner",
+  "landing.feat.prestige": "Prestige-System",
+  "landing.feat.import": "CSV-Import"
 }
