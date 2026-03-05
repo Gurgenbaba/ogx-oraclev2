@@ -69,6 +69,13 @@ async def lifespan(app: FastAPI):
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
             # Bridge tables
+            # Add debris columns if not exist (safe for existing DBs)
+            for col, typ in [("debris_metal", "INTEGER"), ("debris_crystal", "INTEGER")]:
+                try:
+                    await conn.execute(text(f"ALTER TABLE colonies ADD COLUMN {col} {typ} NOT NULL DEFAULT 0"))
+                except Exception:
+                    pass  # Column already exists
+
             await conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS link_codes (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -99,6 +106,13 @@ async def lifespan(app: FastAPI):
             # Create any missing tables (safe: checkfirst=True via create_all)
             await conn.run_sync(Base.metadata.create_all)
             # Bridge tables
+            # Add debris columns if not exist (safe for existing DBs)
+            for col, typ in [("debris_metal", "INTEGER"), ("debris_crystal", "INTEGER")]:
+                try:
+                    await conn.execute(text(f"ALTER TABLE colonies ADD COLUMN {col} {typ} NOT NULL DEFAULT 0"))
+                except Exception:
+                    pass  # Column already exists
+
             await conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS link_codes (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1160,6 +1174,8 @@ async def ingest_galaxy(request: Request, payload: dict = Body(...)):
             ally = (r.get("ally") or "").strip()[:32] or None
             has_moon = bool(r.get("has_moon", False))
             moon_name = (r.get("moon_name") or "").strip()[:128] or None
+            debris_metal = int(r.get("debris_metal") or 0)
+            debris_crystal = int(r.get("debris_crystal") or 0)
 
             note_raw = (r.get("note") or "").strip()
             note = _re.sub(r"ALLY:\S+\s*", "", note_raw).strip()[:255] or None
@@ -1184,6 +1200,8 @@ async def ingest_galaxy(request: Request, payload: dict = Body(...)):
                 existing.moon_name = moon_name if has_moon else None
                 existing.last_seen_at = now
                 existing.source = SRC_HELPER
+                if debris_metal:   existing.debris_metal = debris_metal
+                if debris_crystal: existing.debris_crystal = debris_crystal
                 updated += 1
             else:
                 db.add(
@@ -1201,6 +1219,8 @@ async def ingest_galaxy(request: Request, payload: dict = Body(...)):
                         note=note,
                         last_seen_at=now,
                         source=SRC_HELPER,
+                        debris_metal=debris_metal,
+                        debris_crystal=debris_crystal,
                     )
                 )
                 imported += 1
