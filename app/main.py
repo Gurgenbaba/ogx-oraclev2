@@ -75,7 +75,19 @@ async def lifespan(app: FastAPI):
                 except Exception:
                     pass  # Column already exists
 
-            await conn.execute(text("""
+            # Bridge tables — dialect-aware
+            _lc_pg = """
+                CREATE TABLE IF NOT EXISTS link_codes (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER NOT NULL UNIQUE,
+                    code TEXT NOT NULL,
+                    created_at TIMESTAMP NOT NULL,
+                    used BOOLEAN NOT NULL DEFAULT FALSE,
+                    game_player_id INTEGER,
+                    game_username TEXT,
+                    verified_at TIMESTAMP
+                )"""
+            _lc_sq = """
                 CREATE TABLE IF NOT EXISTS link_codes (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id INTEGER NOT NULL UNIQUE,
@@ -85,17 +97,25 @@ async def lifespan(app: FastAPI):
                     game_player_id INTEGER,
                     game_username TEXT,
                     verified_at TIMESTAMP
-                )
-            """))
-            await conn.execute(text("""
+                )"""
+            _la_pg = """
+                CREATE TABLE IF NOT EXISTS linked_accounts (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER NOT NULL UNIQUE,
+                    game_player_id INTEGER NOT NULL,
+                    game_username TEXT NOT NULL,
+                    linked_at TIMESTAMP NOT NULL
+                )"""
+            _la_sq = """
                 CREATE TABLE IF NOT EXISTS linked_accounts (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id INTEGER NOT NULL UNIQUE,
                     game_player_id INTEGER NOT NULL,
                     game_username TEXT NOT NULL,
                     linked_at TIMESTAMP NOT NULL
-                )
-            """))
+                )"""
+            await conn.execute(text(_lc_pg if IS_POSTGRES else _lc_sq))
+            await conn.execute(text(_la_pg if IS_POSTGRES else _la_sq))
         async with AsyncSessionLocal() as db:
             await seed_achievements(db)
     else:
@@ -112,7 +132,19 @@ async def lifespan(app: FastAPI):
                 except Exception:
                     pass  # Column already exists
 
-            await conn.execute(text("""
+            # Bridge tables — dialect-aware
+            _lc_pg = """
+                CREATE TABLE IF NOT EXISTS link_codes (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER NOT NULL UNIQUE,
+                    code TEXT NOT NULL,
+                    created_at TIMESTAMP NOT NULL,
+                    used BOOLEAN NOT NULL DEFAULT FALSE,
+                    game_player_id INTEGER,
+                    game_username TEXT,
+                    verified_at TIMESTAMP
+                )"""
+            _lc_sq = """
                 CREATE TABLE IF NOT EXISTS link_codes (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id INTEGER NOT NULL UNIQUE,
@@ -122,17 +154,25 @@ async def lifespan(app: FastAPI):
                     game_player_id INTEGER,
                     game_username TEXT,
                     verified_at TIMESTAMP
-                )
-            """))
-            await conn.execute(text("""
+                )"""
+            _la_pg = """
+                CREATE TABLE IF NOT EXISTS linked_accounts (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER NOT NULL UNIQUE,
+                    game_player_id INTEGER NOT NULL,
+                    game_username TEXT NOT NULL,
+                    linked_at TIMESTAMP NOT NULL
+                )"""
+            _la_sq = """
                 CREATE TABLE IF NOT EXISTS linked_accounts (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id INTEGER NOT NULL UNIQUE,
                     game_player_id INTEGER NOT NULL,
                     game_username TEXT NOT NULL,
                     linked_at TIMESTAMP NOT NULL
-                )
-            """))
+                )"""
+            await conn.execute(text(_lc_pg if IS_POSTGRES else _lc_sq))
+            await conn.execute(text(_la_pg if IS_POSTGRES else _la_sq))
         async with AsyncSessionLocal() as db:
             await seed_achievements(db)
 
