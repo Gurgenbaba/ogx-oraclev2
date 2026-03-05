@@ -68,13 +68,7 @@ async def lifespan(app: FastAPI):
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
             # Bridge tables
-            # Add debris columns if not exist (safe for existing DBs)
-            for col, typ in [("debris_metal", "INTEGER"), ("debris_crystal", "INTEGER")]:
-                try:
-                    await conn.execute(text(f"ALTER TABLE colonies ADD COLUMN {col} {typ} NOT NULL DEFAULT 0"))
-                except Exception:
-                    pass  # Column already exists
-
+            # Note: ALTER TABLE done in separate conn below to isolate failures
             # Bridge tables — dialect-aware
             _lc_pg = """
                 CREATE TABLE IF NOT EXISTS link_codes (
@@ -119,60 +113,71 @@ async def lifespan(app: FastAPI):
         async with AsyncSessionLocal() as db:
             await seed_achievements(db)
     else:
-        # prod: verify DB reachable, then ensure prestige tables + achievements exist
+        # prod: verify DB reachable, then ensure schema exists
+        # Step 1: basic connectivity + SQLAlchemy models
         async with engine.begin() as conn:
             await conn.execute(text("SELECT 1"))
-            # Create any missing tables (safe: checkfirst=True via create_all)
             await conn.run_sync(Base.metadata.create_all)
-            # Bridge tables
-            # Add debris columns if not exist (safe for existing DBs)
-            for col, typ in [("debris_metal", "INTEGER"), ("debris_crystal", "INTEGER")]:
-                try:
-                    await conn.execute(text(f"ALTER TABLE colonies ADD COLUMN {col} {typ} NOT NULL DEFAULT 0"))
-                except Exception:
-                    pass  # Column already exists
 
-            # Bridge tables — dialect-aware
-            _lc_pg = """
-                CREATE TABLE IF NOT EXISTS link_codes (
-                    id SERIAL PRIMARY KEY,
-                    user_id INTEGER NOT NULL UNIQUE,
-                    code TEXT NOT NULL,
-                    created_at TIMESTAMP NOT NULL,
-                    used BOOLEAN NOT NULL DEFAULT FALSE,
-                    game_player_id INTEGER,
-                    game_username TEXT,
-                    verified_at TIMESTAMP
-                )"""
-            _lc_sq = """
-                CREATE TABLE IF NOT EXISTS link_codes (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER NOT NULL UNIQUE,
-                    code TEXT NOT NULL,
-                    created_at TIMESTAMP NOT NULL,
-                    used BOOLEAN NOT NULL DEFAULT 0,
-                    game_player_id INTEGER,
-                    game_username TEXT,
-                    verified_at TIMESTAMP
-                )"""
-            _la_pg = """
-                CREATE TABLE IF NOT EXISTS linked_accounts (
-                    id SERIAL PRIMARY KEY,
-                    user_id INTEGER NOT NULL UNIQUE,
-                    game_player_id INTEGER NOT NULL,
-                    game_username TEXT NOT NULL,
-                    linked_at TIMESTAMP NOT NULL
-                )"""
-            _la_sq = """
-                CREATE TABLE IF NOT EXISTS linked_accounts (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER NOT NULL UNIQUE,
-                    game_player_id INTEGER NOT NULL,
-                    game_username TEXT NOT NULL,
-                    linked_at TIMESTAMP NOT NULL
-                )"""
-            await conn.execute(text(_lc_pg if IS_POSTGRES else _lc_sq))
-            await conn.execute(text(_la_pg if IS_POSTGRES else _la_sq))
+        # Step 2: each ALTER TABLE in its OWN transaction
+        # PostgreSQL: an exception inside a transaction poisons ALL subsequent statements.
+        # Fix: use a fresh connection+transaction per ALTER so failures are isolated.
+        for col, typ in [("debris_metal", "INTEGER"), ("debris_crystal", "INTEGER")]:
+            try:
+                async with engine.begin() as conn:
+                    await conn.execute(text(
+                        f"ALTER TABLE colonies ADD COLUMN {col} {typ} NOT NULL DEFAULT 0"
+                    ))
+            except Exception:
+                pass  # Column already exists — safe to ignore
+
+        # Step 3: bridge tables — each in its own transaction
+        _bridge_tables_pg = [
+            """CREATE TABLE IF NOT EXISTS link_codes (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL UNIQUE,
+                code TEXT NOT NULL,
+                created_at TIMESTAMP NOT NULL,
+                used BOOLEAN NOT NULL DEFAULT FALSE,
+                game_player_id INTEGER,
+                game_username TEXT,
+                verified_at TIMESTAMP
+            )""",
+            """CREATE TABLE IF NOT EXISTS linked_accounts (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL UNIQUE,
+                game_player_id INTEGER NOT NULL,
+                game_username TEXT NOT NULL,
+                linked_at TIMESTAMP NOT NULL
+            )""",
+        ]
+        _bridge_tables_sq = [
+            """CREATE TABLE IF NOT EXISTS link_codes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL UNIQUE,
+                code TEXT NOT NULL,
+                created_at TIMESTAMP NOT NULL,
+                used BOOLEAN NOT NULL DEFAULT 0,
+                game_player_id INTEGER,
+                game_username TEXT,
+                verified_at TIMESTAMP
+            )""",
+            """CREATE TABLE IF NOT EXISTS linked_accounts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL UNIQUE,
+                game_player_id INTEGER NOT NULL,
+                game_username TEXT NOT NULL,
+                linked_at TIMESTAMP NOT NULL
+            )""",
+        ]
+        tables = _bridge_tables_pg if IS_POSTGRES else _bridge_tables_sq
+        for stmt in tables:
+            try:
+                async with engine.begin() as conn:
+                    await conn.execute(text(stmt))
+            except Exception:
+                pass  # Table already exists
+
         async with AsyncSessionLocal() as db:
             await seed_achievements(db)
 
