@@ -19,7 +19,7 @@
   <a class="skip-link" href="#main">{{ t('nav.skip') }}</a>
   <header class="topbar">
     <div class="wrap topbar-inner">
-      <a class="brand" href="/?app=1" aria-label="OGX Oracle">
+      <a class="brand" href="/" aria-label="OGX Oracle">
         <span class="brand-mark">OGX</span><span class="brand-rest"> Oracle</span>
       </a>
       <!-- Mobile hamburger -->
@@ -27,13 +27,24 @@
         <span></span><span></span><span></span>
       </button>
       <nav class="nav" id="main-nav">
-        <a href="/?app=1" class="{% if active_nav == 'search' %}active{% endif %}" {% if active_nav == 'search' %}aria-current="page"{% endif %}>{{ t('nav.search') }}</a>
+        <a href="/" class="{% if active_nav == 'search' %}active{% endif %}" {% if active_nav == 'search' %}aria-current="page"{% endif %}>{{ t('nav.search') }}</a>
         <a href="/galaxy" class="{% if active_nav == 'galaxy' %}active{% endif %}" {% if active_nav == 'galaxy' %}aria-current="page"{% endif %}>{{ t('nav.galaxy') }}</a>
         <a href="/import-ui" class="{% if active_nav == 'import' %}active{% endif %}" {% if active_nav == 'import' %}aria-current="page"{% endif %}>{{ t('nav.import') }}</a>
         <a href="/export.csv">{{ t('nav.export') }}</a>
         <a href="https://ogx-expedition-production.up.railway.app" target="_blank" class="muted nav-expedition">{{ t('nav.expedition') }}</a>
-        <a href="/link" class="{% if active_nav == 'link' %}active{% endif %}" {% if active_nav == 'link' %}aria-current="page"{% endif %}>{{ t('nav.link') }}</a>
       </nav>
+
+      <!-- Language Switcher — auto-generated from available lang/*.json files -->
+      <div class="lang-switcher" id="lang-switcher" role="group" aria-label="{{ t('nav.language') }}">
+        {% for opt in lang_switcher %}
+        <button type="button"
+          class="lang-btn{% if opt.active %} lang-btn--active{% endif %}"
+          data-lang="{{ opt.code }}"
+          aria-pressed="{{ 'true' if opt.active else 'false' }}"
+          title="{{ opt.label }}">{{ opt.flag }} {{ opt.label }}</button>
+        {% endfor %}
+      </div>
+
       <div class="authbox" id="authbox">
         <a id="nav-prestige" href="/prestige" class="nav-prestige-link {% if active_nav == 'prestige' %}active{% endif %}" hidden>{{ t('prestige.title') }}</a>
         <span id="auth-username" class="auth-username" hidden></span>
@@ -63,6 +74,7 @@
   <script src="/static/auth.js" defer></script>
   <script src="/static/player.js" defer></script>
   <script src="/static/hints.js" defer></script>
+  <script src="/static/lang-switcher.js" defer></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

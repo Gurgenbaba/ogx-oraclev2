@@ -20,25 +20,45 @@
   // ============================================================
   // Language detection + i18n
   // ============================================================
+  // Supported languages — extend here to add more
+  var SUPPORTED_LANGS = ["de", "en", "fr"];
+  var DEFAULT_LANG = "en";
+
   function detectLang() {
-    const htmlLang = (document.documentElement.lang || "").toLowerCase().slice(0, 2);
-    if (["de", "en", "fr"].includes(htmlLang)) return htmlLang;
-
-    const urlMatch = window.location.pathname.match(/\/(de|en|fr)\//i);
-    if (urlMatch) return urlMatch[1].toLowerCase();
-
-    const meta = document.querySelector('meta[name="language"]');
-    if (meta) {
-      const l = (meta.content || "").toLowerCase().slice(0, 2);
-      if (["de", "en", "fr"].includes(l)) return l;
+    // 1) Cookie set by Oracle (ogx_lang)
+    var cookieMatch = document.cookie.match(/(?:^|;\s*)ogx_lang=([^;]+)/);
+    if (cookieMatch) {
+      var c = cookieMatch[1].toLowerCase().slice(0, 2);
+      if (SUPPORTED_LANGS.includes(c)) return c;
     }
 
-    const body = (document.body && (document.body.innerHTML || "")) || "";
-    if (/Galaxie|Sonnensystem|Planeten/i.test(body)) return "de";
-    if (/Galaxy|Solar System|Planets/i.test(body)) return "en";
-    if (/Galaxie|Système solaire|Planètes/i.test(body)) return "fr";
+    // 2) <html lang="..."> attribute (set by server based on Accept-Language)
+    var htmlLang = (document.documentElement.lang || "").toLowerCase().slice(0, 2);
+    if (SUPPORTED_LANGS.includes(htmlLang)) return htmlLang;
 
-    return "de";
+    // 3) URL path segment (/de/, /en/, /fr/)
+    var urlMatch = window.location.pathname.match(/\/(de|en|fr)\//i);
+    if (urlMatch) return urlMatch[1].toLowerCase();
+
+    // 4) <meta name="language"> tag
+    var meta = document.querySelector('meta[name="language"]');
+    if (meta) {
+      var ml = (meta.content || "").toLowerCase().slice(0, 2);
+      if (SUPPORTED_LANGS.includes(ml)) return ml;
+    }
+
+    // 5) Navigator language (browser preference)
+    var navLang = ((navigator.language || navigator.userLanguage || "").toLowerCase()).slice(0, 2);
+    if (SUPPORTED_LANGS.includes(navLang)) return navLang;
+
+    // 6) Content-based detection (keywords in page)
+    var body = (document.body && document.body.innerText) || "";
+    if (/Sonnensystem|Trümmerfeld|Galaxie/i.test(body)) return "de";
+    if (/Système solaire|Champ de débris|Galaxie/i.test(body)) return "fr";
+    if (/Solar System|Debris field|Galaxy/i.test(body)) return "en";
+
+    // 7) Default
+    return DEFAULT_LANG;
   }
 
   const I18N = {
@@ -163,9 +183,11 @@
     },
   };
 
-  let LANG = "de";
+  // LANG is set in init() via detectLang() — never hardcoded here
+  let LANG = DEFAULT_LANG;
   function S() {
-    return I18N[LANG] || I18N.de;
+    // Fallback chain: detected lang → default lang → first available → empty
+    return I18N[LANG] || I18N[DEFAULT_LANG] || I18N[Object.keys(I18N)[0]] || {};
   }
 
   // ============================================================
@@ -480,10 +502,14 @@
     return { galaxy: galaxy || 0, system: system || 0 };
   }
 
+  // Moon-Name-Regexes — table-driven, extend by adding entries (not if-chains)
+  var MOON_REGEX = {
+    de: /Mond\s+(.+?)\s+\[\d+:\d+:\d+\]/i,
+    en: /Moon\s+(.+?)\s+\[\d+:\d+:\d+\]/i,
+    fr: /Lune\s+(.+?)\s+\[\d+:\d+:\d+\]/i,
+  };
   function moonRegexForLang(lang) {
-    if (lang === "en") return /Moon\s+(.+?)\s+\[\d+:\d+:\d+\]/i;
-    if (lang === "fr") return /Lune\s+(.+?)\s+\[\d+:\d+:\d+\]/i;
-    return /Mond\s+(.+?)\s+\[\d+:\d+:\d+\]/i;
+    return MOON_REGEX[lang] || MOON_REGEX[DEFAULT_LANG] || MOON_REGEX[Object.keys(MOON_REGEX)[0]];
   }
 
   function extractMoonName(cell) {
@@ -512,7 +538,9 @@
     const tbody = document.querySelector("#galaxy-rows");
     if (!tbody) return [];
 
-    const fallbackColony = LANG === "fr" ? "Colonie" : LANG === "en" ? "Colony" : "Kolonie";
+    // Colony name fallback — driven by detected language, not hardcoded order
+    const colonyNames = { de: "Kolonie", en: "Colony", fr: "Colonie" };
+    const fallbackColony = colonyNames[LANG] || colonyNames[DEFAULT_LANG] || "Colony";
 
     const rows = [];
     tbody.querySelectorAll("tr").forEach((tr) => {
