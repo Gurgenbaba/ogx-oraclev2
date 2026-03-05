@@ -215,5 +215,22 @@
   "landing.feat.search": "Spielersuche",
   "landing.feat.galaxy": "Galaxy-Scanner",
   "landing.feat.prestige": "Prestige-System",
-  "landing.feat.import": "CSV-Import"
+  "landing.feat.import": "CSV-Import",
+  "link.title": "Spielkonto verkn\u00fcpfen",
+  "link.subtitle": "Verbinde dein OGX In-Game Konto mit Oracle",
+  "link.step1_title": "Code generieren",
+  "link.step1_desc": "Klicke auf den Button um deinen einzigartigen Verifizierungscode zu generieren.",
+  "link.step2_title": "Code im Spiel senden",
+  "link.step2_desc": "Sende eine Privatnachricht mit deinem Code an den OracleBot Account in OGX.",
+  "link.step3_title": "Fertig!",
+  "link.step3_desc": "Oracle erkennt deine Nachricht automatisch und verkn\u00fcpft deinen Account. Das dauert bis zu 30 Sekunden.",
+  "link.code_hint": "Sende diesen Code als Privatnachricht im Spiel an OracleBot",
+  "link.generate_btn": "Code generieren",
+  "link.regenerate": "Neuer Code",
+  "link.waiting": "Warte auf Best\u00e4tigung...",
+  "link.success": "Account verkn\u00fcpft",
+  "link.linked_sub": "Dein Spielkonto ist mit Oracle verbunden",
+  "link.unlink": "Trennen",
+  "link.unlink_confirm": "Willst du dein Spielkonto wirklich trennen?",
+  "nav.link": "Konto verkn\u00fcpfen"
 }

@@ -215,5 +215,22 @@
   "landing.feat.search": "Player Search",
   "landing.feat.galaxy": "Galaxy Scanner",
   "landing.feat.prestige": "Prestige System",
-  "landing.feat.import": "CSV Import"
+  "landing.feat.import": "CSV Import",
+  "link.title": "Link Game Account",
+  "link.subtitle": "Connect your OGX in-game account with Oracle",
+  "link.step1_title": "Generate a code",
+  "link.step1_desc": "Click the button below to generate your unique verification code.",
+  "link.step2_title": "Send the code in-game",
+  "link.step2_desc": "Send a private message with your code to the OracleBot account in OGX.",
+  "link.step3_title": "Done!",
+  "link.step3_desc": "Oracle detects your message automatically and links your account. This can take up to 30 seconds.",
+  "link.code_hint": "Send this code as a private message in-game to OracleBot",
+  "link.generate_btn": "Generate Code",
+  "link.regenerate": "New Code",
+  "link.waiting": "Waiting for verification...",
+  "link.success": "Account linked",
+  "link.linked_sub": "Your game account is connected to Oracle",
+  "link.unlink": "Unlink",
+  "link.unlink_confirm": "Are you sure you want to unlink your game account?",
+  "nav.link": "Link Account"
 }

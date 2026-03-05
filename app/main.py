@@ -10,6 +10,8 @@ from collections import defaultdict
 import csv
 import io
 import re as _re
+import secrets
+import httpx
 
 from fastapi import FastAPI, Request, Form, UploadFile, File, Body
 from fastapi.middleware.cors import CORSMiddleware
@@ -66,6 +68,28 @@ async def lifespan(app: FastAPI):
     if settings.env == "dev":
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+            # Bridge tables
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS link_codes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL UNIQUE,
+                    code TEXT NOT NULL,
+                    created_at TIMESTAMP NOT NULL,
+                    used BOOLEAN NOT NULL DEFAULT 0,
+                    game_player_id INTEGER,
+                    game_username TEXT,
+                    verified_at TIMESTAMP
+                )
+            """))
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS linked_accounts (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL UNIQUE,
+                    game_player_id INTEGER NOT NULL,
+                    game_username TEXT NOT NULL,
+                    linked_at TIMESTAMP NOT NULL
+                )
+            """))
         async with AsyncSessionLocal() as db:
             await seed_achievements(db)
     else:
@@ -74,6 +98,28 @@ async def lifespan(app: FastAPI):
             await conn.execute(text("SELECT 1"))
             # Create any missing tables (safe: checkfirst=True via create_all)
             await conn.run_sync(Base.metadata.create_all)
+            # Bridge tables
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS link_codes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL UNIQUE,
+                    code TEXT NOT NULL,
+                    created_at TIMESTAMP NOT NULL,
+                    used BOOLEAN NOT NULL DEFAULT 0,
+                    game_player_id INTEGER,
+                    game_username TEXT,
+                    verified_at TIMESTAMP
+                )
+            """))
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS linked_accounts (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL UNIQUE,
+                    game_player_id INTEGER NOT NULL,
+                    game_username TEXT NOT NULL,
+                    linked_at TIMESTAMP NOT NULL
+                )
+            """))
         async with AsyncSessionLocal() as db:
             await seed_achievements(db)
 
@@ -505,7 +551,6 @@ async def login_page(request: Request):
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request, q: str = "", ally: str = "", tab: str = ""):
-
     q = (q or "").strip()
     ally = (ally or "").strip()
     async with AsyncSessionLocal() as db:
@@ -1176,4 +1221,201 @@ async def ingest_galaxy(request: Request, payload: dict = Body(...)):
 
     return {"ok": True, "imported": imported, "updated": updated, "players_created": created_players}
 
+# ---------------------------------------------------------------------------
+# Glad Bridge — Account Linking & Galaxy Sync
+# ---------------------------------------------------------------------------
 
+def _bridge_url(action: str, params: dict = {}) -> str:
+    base = getattr(settings, "glad_bridge_url", "") or ""
+    secret = getattr(settings, "glad_bridge_secret", "") or ""
+    p = f"action={action}&secret={secret}"
+    for k, v in params.items():
+        p += f"&{k}={v}"
+    return f"{base}?{p}"
+
+async def _call_bridge(action: str, params: dict = {}) -> dict:
+    try:
+        import httpx
+        url = _bridge_url(action, params)
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            r = await client.get(url)
+            r.raise_for_status()
+            return r.json()
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+@app.get("/link", response_class=HTMLResponse)
+async def link_page(request: Request):
+    lang = get_lang(request)
+    t = make_translator(lang)
+    return _template(request, "link.html", {
+        "title": t("link.title"),
+        "active_nav": "link",
+    })
+
+
+@app.post("/api/link/start")
+async def link_start(request: Request):
+    async with AsyncSessionLocal() as db:
+        user = await require_jwt_user(request, db)
+        if isinstance(user, JSONResponse):
+            return user
+        code = "OGX-" + secrets.token_hex(3).upper()
+        now = _utcnow_naive()
+        if IS_POSTGRES:
+            await db.execute(text("""
+                INSERT INTO link_codes (user_id, code, created_at, used)
+                VALUES (:uid, :code, :now, false)
+                ON CONFLICT (user_id) DO UPDATE SET code = :code, created_at = :now, used = false
+            """), {"uid": user.id, "code": code, "now": now})
+        else:
+            await db.execute(text("""
+                INSERT OR REPLACE INTO link_codes (user_id, code, created_at, used)
+                VALUES (:uid, :code, :now, 0)
+            """), {"uid": user.id, "code": code, "now": now})
+        await db.commit()
+        return {"ok": True, "code": code}
+
+
+@app.post("/api/link/poll")
+async def link_poll(request: Request):
+    async with AsyncSessionLocal() as db:
+        user = await require_jwt_user(request, db)
+        if isinstance(user, JSONResponse):
+            return user
+        row = (await db.execute(
+            text("SELECT code, used, game_player_id, game_username FROM link_codes WHERE user_id = :uid"),
+            {"uid": user.id}
+        )).fetchone()
+        if not row:
+            return {"ok": False, "status": "no_code"}
+        if row.used:
+            return {"ok": True, "status": "linked", "game_username": row.game_username}
+        result = await _call_bridge("verify", {"code": row.code})
+        if not result.get("ok"):
+            return {"ok": False, "status": "pending"}
+        game_id = result.get("player_id")
+        game_user = result.get("username", "")
+        now = _utcnow_naive()
+        await db.execute(text("""
+            UPDATE link_codes SET used = 1, game_player_id = :gid,
+            game_username = :gun, verified_at = :now WHERE user_id = :uid
+        """), {"gid": game_id, "gun": game_user, "uid": user.id, "now": now})
+        if IS_POSTGRES:
+            await db.execute(text("""
+                INSERT INTO linked_accounts (user_id, game_player_id, game_username, linked_at)
+                VALUES (:uid, :gid, :gun, :now)
+                ON CONFLICT (user_id) DO UPDATE SET game_player_id=:gid, game_username=:gun, linked_at=:now
+            """), {"uid": user.id, "gid": game_id, "gun": game_user, "now": now})
+        else:
+            await db.execute(text("""
+                INSERT OR REPLACE INTO linked_accounts (user_id, game_player_id, game_username, linked_at)
+                VALUES (:uid, :gid, :gun, :now)
+            """), {"uid": user.id, "gid": game_id, "gun": game_user, "now": now})
+        await db.commit()
+        return {"ok": True, "status": "linked", "game_username": game_user}
+
+
+@app.post("/api/link/unlink")
+async def link_unlink(request: Request):
+    async with AsyncSessionLocal() as db:
+        user = await require_jwt_user(request, db)
+        if isinstance(user, JSONResponse):
+            return user
+        await db.execute(text("DELETE FROM link_codes WHERE user_id = :uid"), {"uid": user.id})
+        await db.execute(text("DELETE FROM linked_accounts WHERE user_id = :uid"), {"uid": user.id})
+        await db.commit()
+        return {"ok": True}
+
+
+@app.get("/api/bridge/status")
+async def bridge_status(request: Request):
+    """Check if current user has a linked game account"""
+    async with AsyncSessionLocal() as db:
+        user = await require_jwt_user(request, db)
+        if isinstance(user, JSONResponse):
+            return user
+        row = (await db.execute(
+            text("SELECT game_player_id, game_username FROM linked_accounts WHERE user_id = :uid"),
+            {"uid": user.id}
+        )).fetchone()
+        if row:
+            return {"ok": True, "linked": True, "game_username": row.game_username, "game_player_id": row.game_player_id}
+        return {"ok": True, "linked": False}
+
+
+@app.get("/api/bridge/expo")
+async def bridge_expo(request: Request):
+    async with AsyncSessionLocal() as db:
+        user = await require_jwt_user(request, db)
+        if isinstance(user, JSONResponse):
+            return user
+        row = (await db.execute(
+            text("SELECT game_player_id FROM linked_accounts WHERE user_id = :uid"),
+            {"uid": user.id}
+        )).fetchone()
+        if not row:
+            return {"ok": False, "error": "not_linked"}
+        return await _call_bridge("expo", {"player_id": row.game_player_id})
+
+
+@app.post("/api/bridge/galaxy")
+async def bridge_galaxy(request: Request, payload: dict = Body(...)):
+    async with AsyncSessionLocal() as db:
+        user = await require_jwt_user(request, db)
+        if isinstance(user, JSONResponse):
+            return user
+        galaxy = int(payload.get("galaxy", 0) or 0)
+        system = int(payload.get("system", 0) or 0)
+        if galaxy <= 0 or system <= 0:
+            return {"ok": False, "error": "invalid coordinates"}
+        result = await _call_bridge("galaxy", {"galaxy": galaxy, "system": system})
+        if not result.get("ok"):
+            return result
+        rows = result.get("planets", [])
+        now = _utcnow_naive()
+        imported = 0
+        for r in rows:
+            try:
+                position = int(r.get("position", 0) or 0)
+            except Exception:
+                continue
+            if position <= 0:
+                continue
+            player_name = (r.get("player") or "").strip()[:64]
+            if not player_name:
+                continue
+            planet_name = (r.get("planet_name") or "Colony").strip()[:128]
+            ally = (r.get("ally") or "").strip()[:32] or None
+            has_moon = bool(r.get("has_moon", False))
+            player, _ = await get_or_create_player(db, player_name)
+            if ally and not player.ally:
+                player.ally = ally
+                db.add(player)
+            from sqlalchemy import and_
+            existing = (await db.execute(
+                select(Colony).where(and_(
+                    Colony.player_id == player.id,
+                    Colony.galaxy == galaxy,
+                    Colony.system == system,
+                    Colony.position == position
+                ))
+            )).scalar_one_or_none()
+            if existing:
+                existing.planet_name = planet_name
+                existing.has_moon = has_moon
+                existing.ally = ally
+                existing.last_seen_at = now
+                existing.source = "bridge"
+            else:
+                db.add(Colony(
+                    player_id=player.id, galaxy=galaxy, system=system,
+                    position=position, planet_name=planet_name,
+                    has_moon=has_moon, ally=ally, last_seen_at=now, source="bridge"
+                ))
+            imported += 1
+        await _upsert_galaxy_scan(db, galaxy=galaxy, system=system,
+                                  scanned_at=now, planets_found=imported)
+        await db.commit()
+        return {"ok": True, "imported": imported}

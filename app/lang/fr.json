@@ -215,5 +215,22 @@
   "landing.feat.search": "Recherche joueur",
   "landing.feat.galaxy": "Scanner galaxie",
   "landing.feat.prestige": "Syst\u00e8me prestige",
-  "landing.feat.import": "Import CSV"
+  "landing.feat.import": "Import CSV",
+  "link.title": "Lier le compte de jeu",
+  "link.subtitle": "Connectez votre compte OGX in-game \u00e0 Oracle",
+  "link.step1_title": "G\u00e9n\u00e9rer un code",
+  "link.step1_desc": "Cliquez sur le bouton ci-dessous pour g\u00e9n\u00e9rer votre code de v\u00e9rification unique.",
+  "link.step2_title": "Envoyer le code in-game",
+  "link.step2_desc": "Envoyez un message priv\u00e9 avec votre code au compte OracleBot dans OGX.",
+  "link.step3_title": "C'est fait !",
+  "link.step3_desc": "Oracle d\u00e9tecte votre message automatiquement et lie votre compte. Cela peut prendre jusqu'\u00e0 30 secondes.",
+  "link.code_hint": "Envoyez ce code en message priv\u00e9 in-game \u00e0 OracleBot",
+  "link.generate_btn": "G\u00e9n\u00e9rer un code",
+  "link.regenerate": "Nouveau code",
+  "link.waiting": "En attente de v\u00e9rification...",
+  "link.success": "Compte li\u00e9",
+  "link.linked_sub": "Votre compte de jeu est connect\u00e9 \u00e0 Oracle",
+  "link.unlink": "D\u00e9lier",
+  "link.unlink_confirm": "\u00cates-vous s\u00fbr de vouloir d\u00e9lier votre compte de jeu ?",
+  "nav.link": "Lier compte"
 }

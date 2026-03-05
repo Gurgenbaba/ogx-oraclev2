@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% set active_nav = "link" %}
+{% block head_extra %}
+<style>
+.link-wrap { max-width: 580px; margin: 0 auto; }
+.link-step { display: flex; gap: 1rem; align-items: flex-start; padding: 1.25rem 0; border-bottom: 1px solid rgba(91,163,245,.1); }
+.link-step:last-child { border-bottom: none; }
+.link-step-num { width: 32px; height: 32px; border-radius: 50%; background: rgba(0,212,255,.1); border: 1px solid rgba(0,212,255,.25); display: flex; align-items: center; justify-content: center; color: var(--acc-0,#00d4ff); font-weight: 700; font-size: .9rem; flex-shrink: 0; margin-top: 2px; }
+.link-step-body { flex: 1; }
+.link-step-title { font-weight: 600; color: var(--text-0,#e8f4ff); margin-bottom: .35rem; }
+.link-step-desc { font-size: .85rem; color: var(--text-2,rgba(180,210,255,.55)); line-height: 1.5; }
+.link-code-box { background: rgba(0,0,0,.4); border: 1px solid rgba(0,212,255,.2); border-radius: 12px; padding: 1.5rem; text-align: center; margin: 1.5rem 0; }
+.link-code { font-family: var(--font-mono,monospace); font-size: 2rem; font-weight: 800; color: var(--acc-0,#00d4ff); letter-spacing: .15em; margin-bottom: .5rem; }
+.link-code-hint { font-size: .78rem; color: var(--text-3,rgba(180,210,255,.35)); }
+.link-status { text-align: center; padding: 1rem; border-radius: 10px; font-size: .9rem; margin-top: 1rem; }
+.link-status.pending { background: rgba(0,212,255,.06); color: rgba(180,210,255,.6); }
+.link-status.linked { background: rgba(52,211,153,.08); border: 1px solid rgba(52,211,153,.2); color: #34d399; }
+.link-status.error { background: rgba(255,60,60,.08); color: #ff8080; }
+.link-linked-info { background: rgba(52,211,153,.06); border: 1px solid rgba(52,211,153,.18); border-radius: 12px; padding: 1.25rem 1.5rem; display: flex; align-items: center; gap: 1rem; }
+.link-linked-icon { font-size: 1.8rem; }
+.link-linked-name { font-size: 1.1rem; font-weight: 700; color: #34d399; }
+.link-linked-sub { font-size: .8rem; color: var(--text-2,rgba(180,210,255,.55)); margin-top: 2px; }
+.link-spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(0,212,255,.2); border-top-color: #00d4ff; border-radius: 50%; animation: spin .7s linear infinite; margin-right: 6px; vertical-align: middle; }
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="link-wrap">
+  <section class="card">
+    <div class="row between head-row wrap-flex gap-12">
+      <div>
+        <h1>{{ t('link.title') }}</h1>
+        <div class="muted mt-4 fs-13">{{ t('link.subtitle') }}</div>
+      </div>
+    </div>
+
+    {# Already linked state — shown by JS #}
+    <div id="link-already" hidden>
+      <div class="link-linked-info">
+        <div class="link-linked-icon">&#x2705;</div>
+        <div>
+          <div class="link-linked-name" id="link-linked-name"></div>
+          <div class="link-linked-sub">{{ t('link.linked_sub') }}</div>
+        </div>
+        <button class="btn btn-sm ghost" id="btn-unlink" style="margin-left:auto" type="button">{{ t('link.unlink') }}</button>
+      </div>
+    </div>
+
+    {# Link flow — shown when not yet linked #}
+    <div id="link-flow">
+      <div class="link-wrap">
+
+        <div class="link-step">
+          <div class="link-step-num">1</div>
+          <div class="link-step-body">
+            <div class="link-step-title">{{ t('link.step1_title') }}</div>
+            <div class="link-step-desc">{{ t('link.step1_desc') }}</div>
+          </div>
+        </div>
+
+        <div class="link-step">
+          <div class="link-step-num">2</div>
+          <div class="link-step-body">
+            <div class="link-step-title">{{ t('link.step2_title') }}</div>
+            <div class="link-step-desc">{{ t('link.step2_desc') }}</div>
+          </div>
+        </div>
+
+        <div class="link-step">
+          <div class="link-step-num">3</div>
+          <div class="link-step-body">
+            <div class="link-step-title">{{ t('link.step3_title') }}</div>
+            <div class="link-step-desc">{{ t('link.step3_desc') }}</div>
+          </div>
+        </div>
+
+        <div class="link-code-box" id="link-code-box" hidden>
+          <div class="link-code" id="link-code">—</div>
+          <div class="link-code-hint">{{ t('link.code_hint') }}</div>
+        </div>
+
+        <div id="link-status" class="link-status pending" hidden></div>
+
+        <div class="row gap mt-16">
+          <button class="btn" id="btn-generate" type="button">{{ t('link.generate_btn') }}</button>
+          <button class="btn ghost" id="btn-copy-code" type="button" hidden>{{ t('auth.copy') }}</button>
+        </div>
+
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  var pollTimer = null;
+
+  function qs(s) { return document.querySelector(s); }
+  function token() { return localStorage.getItem("ogx_jwt") || ""; }
+
+  function showStatus(msg, cls) {
+    var el = qs("#link-status");
+    el.textContent = msg;
+    el.className = "link-status " + cls;
+    el.hidden = false;
+  }
+
+  function showLinked(username) {
+    qs("#link-flow").hidden = true;
+    qs("#link-already").hidden = false;
+    qs("#link-linked-name").textContent = username;
+    if (pollTimer) clearInterval(pollTimer);
+  }
+
+  // Generate code
+  qs("#btn-generate").addEventListener("click", async function() {
+    this.disabled = true;
+    this.textContent = "...";
+    try {
+      var r = await fetch("/api/link/start", {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token() }
+      });
+      var d = await r.json();
+      if (!d.ok) { showStatus(d.error || "Error", "error"); this.disabled = false; return; }
+
+      qs("#link-code").textContent = d.code;
+      qs("#link-code-box").hidden = false;
+      qs("#btn-copy-code").hidden = false;
+      this.textContent = "{{ t('link.regenerate') }}";
+      this.disabled = false;
+      showStatus('<span class="link-spinner"></span>{{ t("link.waiting") }}', "pending");
+      qs("#link-status").innerHTML = '<span class="link-spinner"></span>{{ t("link.waiting") }}';
+
+      // Start polling every 5s
+      if (pollTimer) clearInterval(pollTimer);
+      pollTimer = setInterval(pollVerify, 5000);
+
+    } catch(e) {
+      showStatus("Network error", "error");
+      this.disabled = false;
+    }
+  });
+
+  // Copy code
+  qs("#btn-copy-code").addEventListener("click", function() {
+    var code = qs("#link-code").textContent;
+    navigator.clipboard.writeText(code).catch(function() {
+      var ta = document.createElement("textarea");
+      ta.value = code; document.body.appendChild(ta);
+      ta.select(); document.execCommand("copy");
+      document.body.removeChild(ta);
+    });
+    this.textContent = "✓ {{ t('auth.copied') }}";
+    setTimeout(() => { this.textContent = "{{ t('auth.copy') }}"; }, 2000);
+  });
+
+  // Poll for verification
+  async function pollVerify() {
+    try {
+      var r = await fetch("/api/link/poll", {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token() }
+      });
+      var d = await r.json();
+      if (d.ok && d.status === "linked") {
+        showLinked(d.game_username);
+        showStatus("✓ {{ t('link.success') }}: " + d.game_username, "linked");
+      }
+    } catch(e) {}
+  }
+
+  // Unlink
+  qs("#btn-unlink").addEventListener("click", async function() {
+    if (!confirm("{{ t('link.unlink_confirm') }}")) return;
+    await fetch("/api/link/unlink", {
+      method: "POST",
+      headers: { "Authorization": "Bearer " + token() }
+    });
+    qs("#link-flow").hidden = false;
+    qs("#link-already").hidden = true;
+  });
+
+})();
+</script>
+{% endblock %}

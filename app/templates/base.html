@@ -32,6 +32,7 @@
         <a href="/import-ui" class="{% if active_nav == 'import' %}active{% endif %}" {% if active_nav == 'import' %}aria-current="page"{% endif %}>{{ t('nav.import') }}</a>
         <a href="/export.csv">{{ t('nav.export') }}</a>
         <a href="https://ogx-expedition-production.up.railway.app" target="_blank" class="muted nav-expedition">{{ t('nav.expedition') }}</a>
+        <a href="/link" class="{% if active_nav == 'link' %}active{% endif %}" {% if active_nav == 'link' %}aria-current="page"{% endif %}>{{ t('nav.link') }}</a>
       </nav>
       <div class="authbox" id="authbox">
         <a id="nav-prestige" href="/prestige" class="nav-prestige-link {% if active_nav == 'prestige' %}active{% endif %}" hidden>{{ t('prestige.title') }}</a>
