@@ -1,8 +1,13 @@
-// lang-switcher.js — Language switcher logic
-// Reads buttons injected by base.html (server-side, from lang/*.json discovery)
-// No hardcoded language list — everything comes from the DOM
+// lang-switcher.js — Language switcher
+// No hardcoded language list — reads from DOM buttons injected by server
 (function () {
   "use strict";
+
+  function getCsrfToken() {
+    // Read from <meta name="csrf-token"> set by base.html
+    var meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute("content") : "";
+  }
 
   document.addEventListener("click", function (e) {
     var btn = e.target.closest("[data-lang]");
@@ -18,23 +23,26 @@
       b.setAttribute("aria-pressed", isNow ? "true" : "false");
     });
 
-    // Persist via server (sets cookie ogx_lang=XX, 1 year)
+    var csrf = getCsrfToken();
+
     fetch("/api/set-lang", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-csrf-token": csrf,
+      },
       body: JSON.stringify({ lang: lang }),
     })
       .then(function (r) { return r.json(); })
       .then(function (d) {
         if (d.ok) {
-          // Reload without ?lang= to let cookie take over
           var url = new URL(window.location.href);
           url.searchParams.delete("lang");
           window.location.replace(url.toString());
         }
       })
       .catch(function () {
-        // Fallback: use query param if fetch fails
+        // Fallback: query param if fetch fails
         var url = new URL(window.location.href);
         url.searchParams.set("lang", lang);
         window.location.replace(url.toString());

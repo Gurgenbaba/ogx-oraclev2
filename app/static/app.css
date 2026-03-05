@@ -1537,13 +1537,19 @@ details > summary::-webkit-details-marker {
   .brand-mark, .brand-rest { font-size: 18px; }
 }
 
+/* ── Topbar Left (brand + lang switcher grouped) ───────────────────────── */
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
 /* ── Language Switcher ──────────────────────────────────────────────────── */
 .lang-switcher {
   display: flex;
   align-items: center;
   gap: 2px;
-  margin-right: 10px;
-  flex-shrink: 0;
 }
 .lang-btn {
   background: transparent;
@@ -1555,7 +1561,7 @@ details > summary::-webkit-details-marker {
   font-weight: 600;
   letter-spacing: .03em;
   line-height: 1;
-  padding: 3px 6px;
+  padding: 3px 7px;
   transition: background .15s, color .15s, border-color .15s;
   white-space: nowrap;
 }
@@ -1570,6 +1576,6 @@ details > summary::-webkit-details-marker {
   color: var(--acc-0, #00d4ff);
 }
 @media (max-width: 640px) {
-  .lang-switcher { margin-right: 6px; gap: 1px; }
+  .topbar-left { gap: 8px; }
   .lang-btn { font-size: .65rem; padding: 2px 4px; }
 }

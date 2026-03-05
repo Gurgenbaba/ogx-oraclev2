@@ -19,13 +19,30 @@
   <a class="skip-link" href="#main">{{ t('nav.skip') }}</a>
   <header class="topbar">
     <div class="wrap topbar-inner">
-      <a class="brand" href="/" aria-label="OGX Oracle">
-        <span class="brand-mark">OGX</span><span class="brand-rest"> Oracle</span>
-      </a>
+
+      <!-- LEFT: Brand + Language Switcher -->
+      <div class="topbar-left">
+        <a class="brand" href="/" aria-label="OGX Oracle">
+          <span class="brand-mark">OGX</span><span class="brand-rest"> Oracle</span>
+        </a>
+        <!-- Language Switcher — auto-generated from available lang/*.json files -->
+        <div class="lang-switcher" id="lang-switcher" role="group" aria-label="{{ t('nav.language') }}">
+          {% for opt in lang_switcher %}
+          <button type="button"
+            class="lang-btn{% if opt.active %} lang-btn--active{% endif %}"
+            data-lang="{{ opt.code }}"
+            aria-pressed="{{ 'true' if opt.active else 'false' }}"
+            title="{{ opt.label }}">{{ opt.flag }} {{ opt.label }}</button>
+          {% endfor %}
+        </div>
+      </div>
+
       <!-- Mobile hamburger -->
       <button class="nav-hamburger" id="nav-hamburger" type="button" aria-label="Menu" aria-expanded="false">
         <span></span><span></span><span></span>
       </button>
+
+      <!-- CENTER: Nav links -->
       <nav class="nav" id="main-nav">
         <a href="/" class="{% if active_nav == 'search' %}active{% endif %}" {% if active_nav == 'search' %}aria-current="page"{% endif %}>{{ t('nav.search') }}</a>
         <a href="/galaxy" class="{% if active_nav == 'galaxy' %}active{% endif %}" {% if active_nav == 'galaxy' %}aria-current="page"{% endif %}>{{ t('nav.galaxy') }}</a>
@@ -34,21 +51,10 @@
         <a href="https://ogx-expedition-production.up.railway.app" target="_blank" class="muted nav-expedition">{{ t('nav.expedition') }}</a>
       </nav>
 
-      <!-- Language Switcher — auto-generated from available lang/*.json files -->
-      <div class="lang-switcher" id="lang-switcher" role="group" aria-label="{{ t('nav.language') }}">
-        {% for opt in lang_switcher %}
-        <button type="button"
-          class="lang-btn{% if opt.active %} lang-btn--active{% endif %}"
-          data-lang="{{ opt.code }}"
-          aria-pressed="{{ 'true' if opt.active else 'false' }}"
-          title="{{ opt.label }}">{{ opt.flag }} {{ opt.label }}</button>
-        {% endfor %}
-      </div>
-
+      <!-- RIGHT: Auth -->
       <div class="authbox" id="authbox">
         <a id="nav-prestige" href="/prestige" class="nav-prestige-link {% if active_nav == 'prestige' %}active{% endif %}" hidden>{{ t('prestige.title') }}</a>
         <span id="auth-username" class="auth-username" hidden></span>
-        <!-- Token popup -->
         <div id="token-popup-backdrop" class="token-popup-backdrop"></div>
         <div id="token-popup" class="token-popup" role="dialog" aria-label="Bearer Token">
           <div class="token-popup-header">
@@ -64,6 +70,7 @@
         </div>
         <button id="auth-logout" class="btn btn-sm ghost" type="button" hidden>{{ t('auth.logout') }}</button>
       </div>
+
     </div>
   </header>
   <main id="main" class="wrap main-pad">{% block content %}{% endblock %}</main>
