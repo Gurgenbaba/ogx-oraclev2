@@ -231,8 +231,10 @@
   "link.success": "Account verknüpft",
   "link.linked_sub": "Dein Spielkonto ist mit Oracle verbunden",
   "link.unlink": "Trennen",
-  "link.unlink_confirm": "Willst du dein Spielkonto wirklich trennen?",
+  "link.unlink_confirm": "Konto wirklich trennen?",
   "nav.link": "Konto verknüpfen",
   "system.col_tf": "TF",
-  "nav.language": "Sprache"
+  "nav.language": "Sprache",
+  "link.paste_in_ogx": "Kopiere diesen Code und füge ihn in deinen OGX-Einstellungen ein → Profil → OGX Oracle",
+  "link.copied": "Kopiert!"
 }

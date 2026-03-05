@@ -231,8 +231,10 @@
   "link.success": "Compte lié",
   "link.linked_sub": "Votre compte de jeu est connecté à Oracle",
   "link.unlink": "Délier",
-  "link.unlink_confirm": "Êtes-vous sûr de vouloir délier votre compte de jeu ?",
+  "link.unlink_confirm": "Veux-tu vraiment délier ton compte ?",
   "nav.link": "Lier compte",
   "system.col_tf": "CF",
-  "nav.language": "Langue"
+  "nav.language": "Langue",
+  "link.paste_in_ogx": "Copie ce code et colle-le dans tes paramètres OGX → Profil → OGX Oracle",
+  "link.copied": "Copié !"
 }

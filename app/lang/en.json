@@ -231,8 +231,10 @@
   "link.success": "Account linked",
   "link.linked_sub": "Your game account is connected to Oracle",
   "link.unlink": "Unlink",
-  "link.unlink_confirm": "Are you sure you want to unlink your game account?",
+  "link.unlink_confirm": "Are you sure you want to unlink your account?",
   "nav.link": "Link Account",
   "system.col_tf": "TF",
-  "nav.language": "Language"
+  "nav.language": "Language",
+  "link.paste_in_ogx": "Copy this code and paste it in your OGX settings → Profile → OGX Oracle",
+  "link.copied": "Copied!"
 }

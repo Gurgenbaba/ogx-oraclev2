@@ -10,6 +10,7 @@ from collections import defaultdict
 import csv
 import io
 import re as _re
+import hmac
 import secrets
 
 from fastapi import FastAPI, Request, Form, UploadFile, File, Body
@@ -145,10 +146,12 @@ async def lifespan(app: FastAPI):
             )""",
             """CREATE TABLE IF NOT EXISTS linked_accounts (
                 id SERIAL PRIMARY KEY,
-                user_id INTEGER NOT NULL UNIQUE,
+                user_id INTEGER NOT NULL,
+                server_id TEXT NOT NULL DEFAULT 'universum-1',
                 game_player_id INTEGER NOT NULL,
                 game_username TEXT NOT NULL,
-                linked_at TIMESTAMP NOT NULL
+                linked_at TIMESTAMP NOT NULL,
+                UNIQUE (user_id, server_id)
             )""",
         ]
         _bridge_tables_sq = [
@@ -164,10 +167,12 @@ async def lifespan(app: FastAPI):
             )""",
             """CREATE TABLE IF NOT EXISTS linked_accounts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL UNIQUE,
+                user_id INTEGER NOT NULL,
+                server_id TEXT NOT NULL DEFAULT 'universum-1',
                 game_player_id INTEGER NOT NULL,
                 game_username TEXT NOT NULL,
-                linked_at TIMESTAMP NOT NULL
+                linked_at TIMESTAMP NOT NULL,
+                UNIQUE (user_id, server_id)
             )""",
         ]
         tables = _bridge_tables_pg if IS_POSTGRES else _bridge_tables_sq
@@ -608,6 +613,11 @@ async def prestige_page(request: Request):
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
     return _template(request, "login.html", {})
+
+def _consteq(a: str, b: str) -> bool:
+    """Constant-time string comparison to prevent timing attacks."""
+    return hmac.compare_digest(a.encode(), b.encode())
+
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request, q: str = "", ally: str = "", tab: str = ""):
@@ -1391,43 +1401,73 @@ async def link_start(request: Request):
         return {"ok": True, "code": code}
 
 
-@app.post("/api/link/poll")
-async def link_poll(request: Request):
+@app.post("/api/link/confirm")
+async def link_confirm(request: Request):
+    """
+    Called by Glad's server when a player saves their Oracle code in OGX settings.
+    No polling needed — Glad pushes directly to this endpoint.
+
+    Body JSON:
+      { "code": "OGX-XXXXXX", "player_id": 123, "username": "Spielername",
+        "server_id": "universum-1", "secret": "GLAD_BRIDGE_SECRET" }
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"ok": False, "error": "invalid_json"}, status_code=400)
+
+    # Validate shared secret
+    expected_secret = getattr(settings, "glad_bridge_secret", "") or ""
+    incoming_secret = (body.get("secret") or "").strip()
+    if not expected_secret or not _consteq(expected_secret, incoming_secret):
+        return JSONResponse({"ok": False, "error": "invalid_secret"}, status_code=403)
+
+    code       = (body.get("code") or "").strip().upper()
+    player_id  = body.get("player_id")
+    username   = (body.get("username") or "").strip()
+    server_id  = (body.get("server_id") or "universum-1").strip()
+
+    if not code or not player_id or not username:
+        return JSONResponse({"ok": False, "error": "missing_fields"}, status_code=400)
+
     async with AsyncSessionLocal() as db:
-        user = await require_jwt_user(request, db)
-        if isinstance(user, JSONResponse):
-            return user
+        # Find the matching code
         row = (await db.execute(
-            text("SELECT code, used, game_player_id, game_username FROM link_codes WHERE user_id = :uid"),
-            {"uid": user.id}
+            text("SELECT user_id, used FROM link_codes WHERE code = :code"),
+            {"code": code}
         )).fetchone()
+
         if not row:
-            return {"ok": False, "status": "no_code"}
+            return JSONResponse({"ok": False, "error": "code_not_found"}, status_code=404)
         if row.used:
-            return {"ok": True, "status": "linked", "game_username": row.game_username}
-        result = await _call_bridge("verify", {"code": row.code})
-        if not result.get("ok"):
-            return {"ok": False, "status": "pending"}
-        game_id = result.get("player_id")
-        game_user = result.get("username", "")
+            return JSONResponse({"ok": False, "error": "code_already_used"}, status_code=409)
+
         now = _utcnow_naive()
+
+        # Mark code as used
         await db.execute(text("""
-            UPDATE link_codes SET used = 1, game_player_id = :gid,
-            game_username = :gun, verified_at = :now WHERE user_id = :uid
-        """), {"gid": game_id, "gun": game_user, "uid": user.id, "now": now})
+            UPDATE link_codes
+            SET used = true, game_player_id = :gid, game_username = :gun, verified_at = :now
+            WHERE code = :code
+        """), {"gid": player_id, "gun": username, "now": now, "code": code})
+
+        # Upsert linked_accounts (per user + server)
         if IS_POSTGRES:
             await db.execute(text("""
-                INSERT INTO linked_accounts (user_id, game_player_id, game_username, linked_at)
-                VALUES (:uid, :gid, :gun, :now)
-                ON CONFLICT (user_id) DO UPDATE SET game_player_id=:gid, game_username=:gun, linked_at=:now
-            """), {"uid": user.id, "gid": game_id, "gun": game_user, "now": now})
+                INSERT INTO linked_accounts (user_id, server_id, game_player_id, game_username, linked_at)
+                VALUES (:uid, :sid, :gid, :gun, :now)
+                ON CONFLICT (user_id, server_id) DO UPDATE
+                    SET game_player_id = :gid, game_username = :gun, linked_at = :now
+            """), {"uid": row.user_id, "sid": server_id, "gid": player_id, "gun": username, "now": now})
         else:
             await db.execute(text("""
-                INSERT OR REPLACE INTO linked_accounts (user_id, game_player_id, game_username, linked_at)
-                VALUES (:uid, :gid, :gun, :now)
-            """), {"uid": user.id, "gid": game_id, "gun": game_user, "now": now})
+                INSERT OR REPLACE INTO linked_accounts (user_id, server_id, game_player_id, game_username, linked_at)
+                VALUES (:uid, :sid, :gid, :gun, :now)
+            """), {"uid": row.user_id, "sid": server_id, "gid": player_id, "gun": username, "now": now})
+
         await db.commit()
-        return {"ok": True, "status": "linked", "game_username": game_user}
+
+    return {"ok": True, "message": "account linked successfully"}
 
 
 @app.post("/api/link/unlink")
