@@ -1926,3 +1926,4 @@ async def bridge_galaxy(request: Request, payload: dict = Body(...)):
                                   scanned_at=now, planets_found=imported)
         await db.commit()
         return {"ok": True, "imported": imported}
+
