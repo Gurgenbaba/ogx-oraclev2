@@ -1477,6 +1477,37 @@ async def smuggler_codes(request: Request):
         }
 
 # ---------------------------------------------------------------------------
+# Account self-deletion (DSGVO Art. 17)
+# ---------------------------------------------------------------------------
+
+@app.post("/api/account/delete")
+async def account_delete(request: Request):
+    """Permanently delete the authenticated user and all their data."""
+    async with AsyncSessionLocal() as db:
+        user, _err = await require_jwt_user(request, db)
+        if _err:
+            return _err
+
+        uid = int(user.id)
+
+        for tbl in [
+            "smuggler_found_codes",
+            "smuggler_code_redemptions",
+            "user_achievements",
+            "link_codes",
+            "linked_accounts",
+        ]:
+            try:
+                await db.execute(text(f"DELETE FROM {tbl} WHERE user_id = :uid"), {"uid": uid})
+            except Exception:
+                pass
+
+        await db.execute(text("DELETE FROM users WHERE id = :uid"), {"uid": uid})
+        await db.commit()
+        return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
 # Language — persistent cookie
 # ---------------------------------------------------------------------------
 
@@ -1546,6 +1577,28 @@ async def _call_bridge(action: str, params: dict = {}, server_id: str = "uni1") 
             return r.json()
     except Exception as e:
         return {"ok": False, "error": str(e)}
+
+
+@app.get("/privacy", response_class=HTMLResponse)
+async def privacy_page(request: Request):
+    lang = get_lang(request)
+    return templates.TemplateResponse("privacy.html", {
+        "request": request, "lang": lang,
+        "t": get_t(lang), "csrf_token": _csrf_token(request),
+        "active_nav": "", "title": "Privacy Policy – OGX Oracle",
+        "i18n_js": get_translations_js(lang),
+    })
+
+
+@app.get("/settings", response_class=HTMLResponse)
+async def settings_page(request: Request):
+    lang = get_lang(request)
+    return templates.TemplateResponse("settings.html", {
+        "request": request, "lang": lang,
+        "t": get_t(lang), "csrf_token": _csrf_token(request),
+        "active_nav": "settings", "title": "Einstellungen – OGX Oracle",
+        "i18n_js": get_translations_js(lang),
+    })
 
 
 @app.get("/link", response_class=HTMLResponse)

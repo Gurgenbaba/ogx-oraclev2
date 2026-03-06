@@ -1537,45 +1537,14 @@ details > summary::-webkit-details-marker {
   .brand-mark, .brand-rest { font-size: 18px; }
 }
 
-/* ── Topbar Left (brand + lang switcher grouped) ───────────────────────── */
-.topbar-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-shrink: 0;
-}
 
-/* ── Language Switcher ──────────────────────────────────────────────────── */
-.lang-switcher {
-  display: flex;
-  align-items: center;
-  gap: 2px;
+.footer-legal {
+  margin-top: .4rem;
+  font-size: .78rem;
 }
-.lang-btn {
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  color: var(--text-2, rgba(180,210,255,.55));
-  cursor: pointer;
-  font-size: .72rem;
-  font-weight: 600;
-  letter-spacing: .03em;
-  line-height: 1;
-  padding: 3px 7px;
-  transition: background .15s, color .15s, border-color .15s;
-  white-space: nowrap;
+.footer-legal a {
+  color: #556677;
+  text-decoration: none;
+  margin-right: .75rem;
 }
-.lang-btn:hover {
-  background: rgba(0,212,255,.08);
-  border-color: rgba(0,212,255,.2);
-  color: var(--text-0, #e8f4ff);
-}
-.lang-btn--active {
-  background: rgba(0,212,255,.12);
-  border-color: rgba(0,212,255,.35);
-  color: var(--acc-0, #00d4ff);
-}
-@media (max-width: 640px) {
-  .topbar-left { gap: 8px; }
-  .lang-btn { font-size: .65rem; padding: 2px 4px; }
-}
+.footer-legal a:hover { color: #8899aa; text-decoration: underline; }

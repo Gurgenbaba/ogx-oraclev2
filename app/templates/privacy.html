@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block head_extra %}
+<link rel="stylesheet" href="/static/privacy.css" />
+{% endblock %}
+{% block content %}
+<div class="privacy-wrap">
+  <h1 class="privacy-title">{{ t('privacy.title') }}</h1>
+  <p class="privacy-meta">{{ t('privacy.last_updated') }}: 2026-03-06</p>
+
+  <section>
+    <h2>{{ t('privacy.section_who_title') }}</h2>
+    <p>{{ t('privacy.section_who_body') }}</p>
+  </section>
+
+  <section>
+    <h2>{{ t('privacy.section_data_title') }}</h2>
+    <ul>
+      <li>{{ t('privacy.data_account') }}</li>
+      <li>{{ t('privacy.data_link') }}</li>
+      <li>{{ t('privacy.data_galaxy') }}</li>
+      <li>{{ t('privacy.data_prestige') }}</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>{{ t('privacy.section_purpose_title') }}</h2>
+    <p>{{ t('privacy.section_purpose_body') }}</p>
+  </section>
+
+  <section>
+    <h2>{{ t('privacy.section_storage_title') }}</h2>
+    <p>{{ t('privacy.section_storage_body') }}</p>
+  </section>
+
+  <section>
+    <h2>{{ t('privacy.section_rights_title') }}</h2>
+    <p>{{ t('privacy.section_rights_body') }}</p>
+    <p>{{ t('privacy.section_rights_delete') }} <a href="/settings">{{ t('privacy.settings_link') }}</a>.</p>
+  </section>
+
+  <section>
+    <h2>{{ t('privacy.section_contact_title') }}</h2>
+    <p>{{ t('privacy.section_contact_body') }}</p>
+  </section>
+</div>
+{% endblock %}

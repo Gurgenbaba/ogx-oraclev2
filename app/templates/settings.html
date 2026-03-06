@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block head_extra %}
+<link rel="stylesheet" href="/static/settings.css" />
+{% endblock %}
+{% block content %}
+<div class="settings-wrap">
+  <h1 class="settings-title">{{ t('settings.title') }}</h1>
+
+  <!-- Account-Löschung -->
+  <section class="settings-section">
+    <h2>{{ t('settings.danger_title') }}</h2>
+    <p class="settings-danger-desc">{{ t('settings.danger_desc') }}</p>
+    <button class="btn btn-danger" id="btn-delete-account" type="button">
+      {{ t('settings.delete_account_btn') }}
+    </button>
+    <div id="settings-delete-confirm" class="settings-confirm-box" hidden>
+      <p>{{ t('settings.delete_confirm_text') }}</p>
+      <div class="settings-confirm-actions">
+        <button class="btn btn-danger" id="btn-delete-confirm" type="button">{{ t('settings.delete_yes') }}</button>
+        <button class="btn ghost" id="btn-delete-cancel" type="button">{{ t('settings.delete_no') }}</button>
+      </div>
+    </div>
+    <div id="settings-status" class="settings-status" hidden></div>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="/static/settings.js" defer></script>
+{% endblock %}

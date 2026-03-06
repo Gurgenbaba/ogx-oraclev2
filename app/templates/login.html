@@ -64,7 +64,13 @@
         <input type="password" id="reg-pass" autocomplete="new-password"
                placeholder="{{ t('auth.password') | lower }}" />
       </div>
-      <button class="login-btn login-btn-ghost" id="btn-register" type="button">{{ t('auth.create_account') }}</button>
+      <div class="login-field login-field-consent">
+        <label class="login-consent-label">
+          <input type="checkbox" id="reg-consent" />
+          <span>{{ t('auth.consent_text') }} <a href="/privacy" target="_blank">{{ t('auth.consent_privacy') }}</a>.</span>
+        </label>
+      </div>
+      <button class="login-btn login-btn-ghost" id="btn-register" type="button" disabled>{{ t('auth.create_account') }}</button>
     </div>
 
     <!-- Token pane — shown after successful login/register -->
@@ -91,6 +97,7 @@
   </div>
 </div>
 
+<script src="/static/login-consent.js"></script>
 <script src="/static/login.js"></script>
 </body>
 </html>
