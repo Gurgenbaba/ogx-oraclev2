@@ -12,7 +12,7 @@
   <link rel="icon" type="image/x-icon" href="/static/favicon.ico?v=2" />
   <link rel="shortcut icon" href="/static/favicon.ico?v=2" />
   {% block head_extra %}{% endblock %}
-  <script src="/static/i18n_data.js"></script>
+  <script src="/api/i18n_data.js"></script>
 </head>
 <body>
   <a class="skip-link" href="#main">{{ t('nav.skip') }}</a>
@@ -31,8 +31,14 @@
         <a href="/import-ui" class="{% if active_nav == 'import' %}active{% endif %}" {% if active_nav == 'import' %}aria-current="page"{% endif %}>{{ t('nav.import') }}</a>
         <a href="/export.csv">{{ t('nav.export') }}</a>
         <a href="https://ogx-expedition-production.up.railway.app" target="_blank" class="muted nav-expedition">{{ t('nav.expedition') }}</a>
+        <a href="/link" class="{% if active_nav == 'link' %}active{% endif %}" {% if active_nav == 'link' %}aria-current="page"{% endif %} id="nav-link-account">{{ t('nav.link') }}</a>
       </nav>
       <div class="authbox" id="authbox">
+        <div class="lang-switcher" id="lang-switcher">
+          {% for lc in lang_switcher %}
+          <button class="lang-btn{% if lc.active %} active{% endif %}" data-lang="{{ lc.code }}" type="button">{{ lc.label }}</button>
+          {% endfor %}
+        </div>
         <a id="nav-prestige" href="/prestige" class="nav-prestige-link {% if active_nav == 'prestige' %}active{% endif %}" hidden>{{ t('prestige.title') }}</a>
         <span id="auth-username" class="auth-username" hidden></span>
         <!-- Token popup -->

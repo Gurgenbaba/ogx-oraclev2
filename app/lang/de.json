@@ -274,5 +274,8 @@
   "settings.delete_success": "Account gelöscht. Du wirst weitergeleitet...",
   "settings.delete_error": "Fehler beim Löschen. Bitte versuche es erneut.",
   "auth.consent_text": "Ich habe die",
-  "auth.consent_privacy": "Datenschutzerklärung gelesen und stimme zu"
+  "auth.consent_privacy": "Datenschutzerklärung gelesen und stimme zu",
+  "nav": {
+    "link": "Account verknüpfen"
+  }
 }

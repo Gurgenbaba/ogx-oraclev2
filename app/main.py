@@ -1,4 +1,4 @@
-# app/main.py  -- deployed 2026-03-06 21:50 UTC
+# app/main.py  -- deployed 2026-03-06 22:05 UTC
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
@@ -542,7 +542,7 @@ async def api_leaderboard(request: Request):
         return JSONResponse({"ok": True, "leaderboard": board})
 
 
-@app.get("/static/i18n_data.js", include_in_schema=False)
+@app.get("/api/i18n_data.js", include_in_schema=False)
 async def i18n_data_js(request: Request):
     """Serve window.I18N as a JS file — CSP-safe alternative to inline <script>."""
     lang = get_lang(request)

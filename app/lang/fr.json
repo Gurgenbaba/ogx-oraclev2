@@ -274,5 +274,8 @@
   "settings.delete_success": "Compte supprimé. Redirection en cours...",
   "settings.delete_error": "Erreur lors de la suppression. Réessaie.",
   "auth.consent_text": "J'ai lu et j'accepte la",
-  "auth.consent_privacy": "Politique de confidentialité"
+  "auth.consent_privacy": "Politique de confidentialité",
+  "nav": {
+    "link": "Lier le compte"
+  }
 }

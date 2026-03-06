@@ -274,5 +274,8 @@
   "settings.delete_success": "Account deleted. Redirecting...",
   "settings.delete_error": "Error deleting account. Please try again.",
   "auth.consent_text": "I have read and agree to the",
-  "auth.consent_privacy": "Privacy Policy"
+  "auth.consent_privacy": "Privacy Policy",
+  "nav": {
+    "link": "Link Account"
+  }
 }
