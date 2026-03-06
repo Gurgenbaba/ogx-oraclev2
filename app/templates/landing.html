@@ -10,10 +10,8 @@
   <link rel="stylesheet" href="/static/app.css" />
   <link rel="stylesheet" href="/static/login.css" />
   <link rel="icon" type="image/x-icon" href="/static/favicon.ico?v=2" />
-  <script id="i18n-data" type="application/json">{{ i18n_js | tojson }}</script>
-  <script src="/static/i18n.js"></script>
+  <script src="/static/i18n_data.js"></script>
   <style>
-    /* ── Landing hero ─────────────────────────────────────────── */
     .landing-wrap {
       min-height: 100vh;
       display: flex;
@@ -23,12 +21,7 @@
       padding: 2rem 1rem 4rem;
       gap: 2.5rem;
     }
-
-    .landing-hero {
-      text-align: center;
-      max-width: 560px;
-    }
-
+    .landing-hero { text-align: center; max-width: 560px; }
     .landing-brand {
       display: inline-flex;
       align-items: baseline;
@@ -46,9 +39,7 @@
       font-size: 2.2rem;
       font-weight: 300;
       color: var(--text, #e2e8f0);
-      letter-spacing: .02em;
     }
-
     .landing-tagline {
       font-family: 'JetBrains Mono', 'Fira Mono', Consolas, monospace;
       font-size: .78rem;
@@ -56,14 +47,12 @@
       letter-spacing: .08em;
       margin-bottom: 1.4rem;
     }
-
     .landing-desc {
       font-size: 1rem;
       color: var(--muted, #94a3b8);
       line-height: 1.6;
       margin-bottom: 2rem;
     }
-
     .landing-features {
       display: flex;
       gap: 1rem;
@@ -71,7 +60,6 @@
       flex-wrap: wrap;
       margin-bottom: .5rem;
     }
-
     .landing-feat {
       background: var(--surface2, rgba(91,163,245,.07));
       border: 1px solid var(--border, rgba(255,255,255,.07));
@@ -81,19 +69,10 @@
       color: var(--muted, #94a3b8);
       font-family: 'JetBrains Mono', monospace;
     }
-
-    /* ── Login card (reuse login.css vars) ───────────────────── */
-    .landing-card-wrap {
-      width: 100%;
-      max-width: 380px;
-    }
-
-    /* ── Footer ──────────────────────────────────────────────── */
+    .landing-card-wrap { width: 100%; max-width: 380px; }
     .landing-footer {
       position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
+      bottom: 0; left: 0; right: 0;
       text-align: center;
       padding: .75rem 1rem;
       font-size: .72rem;
@@ -101,45 +80,30 @@
       background: var(--bg, #0f1117);
       border-top: 1px solid var(--border, rgba(255,255,255,.05));
     }
-
-    /* ── Already-logged-in redirect overlay ──────────────────── */
-    .landing-redirect {
-      display: none;
-      text-align: center;
-      color: var(--muted, #94a3b8);
-      font-size: .9rem;
-    }
-    .landing-redirect.visible { display: block; }
   </style>
 </head>
 <body>
 
 <div class="landing-wrap">
 
-  <!-- Hero -->
   <div class="landing-hero">
     <a class="landing-brand" href="/">
       <span class="ogx">OGX</span>
       <span class="oracle">Oracle</span>
     </a>
     <div class="landing-tagline">// Galaxy Intelligence System</div>
-    <p class="landing-desc">
-      Track players, alliances &amp; colonies across the OGX universe.
-      Scan systems, manage prestige and stay one step ahead.
-    </p>
+    <p class="landing-desc">{{ t('landing.desc') }}</p>
     <div class="landing-features">
-      <span class="landing-feat">&#x1F50D; Player Search</span>
-      <span class="landing-feat">&#x1F30C; Galaxy Scanner</span>
-      <span class="landing-feat">&#x1F3C6; Prestige System</span>
-      <span class="landing-feat">&#x1F4E5; CSV Import</span>
+      <span class="landing-feat">&#x1F50D; {{ t('landing.feat.search') }}</span>
+      <span class="landing-feat">&#x1F30C; {{ t('landing.feat.galaxy') }}</span>
+      <span class="landing-feat">&#x1F3C6; {{ t('landing.feat.prestige') }}</span>
+      <span class="landing-feat">&#x1F4E5; {{ t('landing.feat.import') }}</span>
     </div>
   </div>
 
-  <!-- Login / Register card -->
   <div class="landing-card-wrap">
     <div class="login-card">
 
-      <!-- Tabs -->
       <div class="login-tabs" id="login-tabs">
         <button class="login-tab active" id="tab-login" type="button">{{ t('auth.login') }}</button>
         <button class="login-tab" id="tab-register" type="button">{{ t('auth.register') }}</button>
@@ -147,7 +111,6 @@
 
       <div class="login-error" id="auth-error"></div>
 
-      <!-- Login pane -->
       <div id="pane-login">
         <div class="login-field">
           <label for="login-user">{{ t('auth.username') }}</label>
@@ -162,7 +125,6 @@
         <button class="login-btn" id="btn-login" type="button">{{ t('auth.login') }}</button>
       </div>
 
-      <!-- Register pane -->
       <div id="pane-register" hidden>
         <div class="login-policy">// {{ t('auth.pw_policy', n=(settings.password_min_len if settings else 10)) }}</div>
         <div class="login-field">
@@ -178,7 +140,6 @@
         <button class="login-btn login-btn-ghost" id="btn-register" type="button">{{ t('auth.create_account') }}</button>
       </div>
 
-      <!-- Token pane — shown after successful login/register -->
       <div id="pane-token" hidden>
         <div class="success-head">
           <div class="success-icon">&#x2713;</div>
@@ -194,14 +155,9 @@
         </div>
         <div class="success-actions">
           <button class="login-btn" id="btn-copy" type="button">{{ t('auth.copy') }}</button>
-          <a class="login-btn login-btn-ghost" href="/" id="btn-continue">{{ t('auth.continue') }} &#x2192;</a>
+          <a class="login-btn login-btn-ghost" href="/?app=1" id="btn-continue">{{ t('auth.continue') }} &#x2192;</a>
         </div>
         <div class="success-copied" id="copied-msg">&#x2713; {{ t('auth.copied') }}</div>
-      </div>
-
-      <!-- Already logged in -->
-      <div class="landing-redirect" id="pane-redirect">
-        &#x2714; Logged in &mdash; <a href="/">Go to Oracle &rarr;</a>
       </div>
 
     </div>
@@ -209,25 +165,9 @@
 
 </div>
 
-<div class="landing-footer">
-  {{ t('footer.community') }}
-</div>
+<div class="landing-footer">{{ t('footer.community') }}</div>
 
 <script src="/static/login.js"></script>
-<script>
-// If already logged in, skip login form and show redirect
-(function () {
-  var token = localStorage.getItem("ogx_jwt");
-  if (!token) return;
-  fetch("/auth/me", { headers: { "Authorization": "Bearer " + token } })
-    .then(function(r) { return r.ok ? r.json() : null; })
-    .then(function(d) {
-      if (!d || !d.ok) return;
-      // Already logged in — redirect straight to app
-      window.location.replace("/");
-    })
-    .catch(function() {});
-})();
-</script>
+<script src="/static/landing-autologin.js" defer></script>
 </body>
 </html>
