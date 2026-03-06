@@ -1592,20 +1592,30 @@ async def link_poll(request: Request):
             body = await request.json()
         except Exception:
             body = {}
-        server_id = (body.get("server_id") or "uni1").strip()
+        # Try all known servers until one confirms the code
+        # Glad's verify returns server_id in the response so we know which server matched
+        known_servers = ["uni1", "beta"]
+        bridge_result = None
+        for srv in known_servers:
+            result = await _call_bridge("verify", {"code": row.code}, server_id=srv)
+            if result.get("ok"):
+                bridge_result = result
+                break
+            if result.get("error") not in ("code_pending", "code_not_found", "unauthorized"):
+                # Unexpected error — still keep trying other servers
+                pass
 
-        # Call Glad's verify endpoint
-        bridge_result = await _call_bridge("verify", {"code": row.code}, server_id=server_id)
+        if bridge_result is None:
+            # All servers returned code_pending / not found
+            return {"ok": True, "linked": False, "pending": True}
 
         if not bridge_result.get("ok"):
             err = bridge_result.get("error", "")
-            if err == "code_pending":
-                return {"ok": True, "linked": False, "pending": True}
             return {"ok": False, "error": err or "bridge_error"}
 
         player_id = bridge_result.get("player_id")
         username  = (bridge_result.get("username") or "").strip()
-        returned_server = (bridge_result.get("server_id") or server_id).strip()
+        returned_server = (bridge_result.get("server_id") or "uni1").strip()
 
         if not player_id or not username:
             return {"ok": False, "error": "bridge_missing_fields"}
@@ -1635,7 +1645,7 @@ async def link_poll(request: Request):
 
         await db.commit()
 
-        return {"ok": True, "linked": True, "game_username": username, "game_player_id": player_id}
+        return {"ok": True, "linked": True, "game_username": username, "game_player_id": player_id, "server_id": returned_server}
 
 
 @app.post("/api/link/unlink")

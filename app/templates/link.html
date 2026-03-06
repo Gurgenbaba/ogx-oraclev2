@@ -115,7 +115,7 @@
     qs("#link-flow").hidden = true;
     qs("#link-already").hidden = false;
     qs("#link-linked-name").textContent = username;
-    var serverLabel = {"uni1": "OGX Uni 1", "beta": "OGX Beta"}[serverId] || serverId || "OGX";
+    var serverLabel = {"uni1": "OGX Uni 1", "beta": "OGX Beta (PTU)"}[serverId] || serverId || "OGX";
     var el = qs("#link-server-name");
     if (el) el.textContent = serverLabel;
   }
@@ -145,7 +145,7 @@
           "x-csrf-token": csrfToken(),
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ server_id: "uni1" })
+        body: JSON.stringify({})
       });
       var d = await r.json();
       if (!d.ok) {
