@@ -1449,9 +1449,9 @@ async def ingest_galaxy(request: Request, payload: dict = Body(...)):
 async def smuggler_codes(request: Request):
     """Returns all smuggler codes the current user has found via expeditions."""
     async with AsyncSessionLocal() as db:
-        user = await require_jwt_user(request, db)
-        if isinstance(user, JSONResponse):
-            return user
+        user, _err = await require_jwt_user(request, db)
+        if _err:
+            return _err
 
         rows = (await db.execute(
             text("""SELECT code, level, found_at, expo_date, prestige_xp_awarded
@@ -1561,9 +1561,9 @@ async def link_page(request: Request):
 @app.post("/api/link/start")
 async def link_start(request: Request):
     async with AsyncSessionLocal() as db:
-        user = await require_jwt_user(request, db)
-        if isinstance(user, JSONResponse):
-            return user
+        user, _err = await require_jwt_user(request, db)
+        if _err:
+            return _err
         code = "OGX-" + secrets.token_hex(3).upper()
         now = _utcnow_naive()
         if IS_POSTGRES:
@@ -1591,9 +1591,9 @@ async def link_poll(request: Request):
     Body JSON: { "server_id": "uni1" }   (optional, defaults to "uni1")
     """
     async with AsyncSessionLocal() as db:
-        user = await require_jwt_user(request, db)
-        if isinstance(user, JSONResponse):
-            return user
+        user, _err = await require_jwt_user(request, db)
+        if _err:
+            return _err
 
         # Get user's pending link code
         row = (await db.execute(
@@ -1676,9 +1676,9 @@ async def link_poll(request: Request):
 @app.post("/api/link/unlink")
 async def link_unlink(request: Request):
     async with AsyncSessionLocal() as db:
-        user = await require_jwt_user(request, db)
-        if isinstance(user, JSONResponse):
-            return user
+        user, _err = await require_jwt_user(request, db)
+        if _err:
+            return _err
         await db.execute(text("DELETE FROM link_codes WHERE user_id = :uid"), {"uid": user.id})
         await db.execute(text("DELETE FROM linked_accounts WHERE user_id = :uid"), {"uid": user.id})
         await db.commit()
@@ -1689,9 +1689,9 @@ async def link_unlink(request: Request):
 async def bridge_status(request: Request):
     """Check if current user has a linked game account"""
     async with AsyncSessionLocal() as db:
-        user = await require_jwt_user(request, db)
-        if isinstance(user, JSONResponse):
-            return user
+        user, _err = await require_jwt_user(request, db)
+        if _err:
+            return _err
         try:
             row = (await db.execute(
                 text("SELECT game_player_id, game_username, server_id FROM linked_accounts WHERE user_id = :uid LIMIT 1"),
@@ -1715,9 +1715,9 @@ async def bridge_status(request: Request):
 @app.get("/api/bridge/expo")
 async def bridge_expo(request: Request):
     async with AsyncSessionLocal() as db:
-        user = await require_jwt_user(request, db)
-        if isinstance(user, JSONResponse):
-            return user
+        user, _err = await require_jwt_user(request, db)
+        if _err:
+            return _err
 
         # Get user's linked code + server
         link_row = (await db.execute(
@@ -1811,9 +1811,9 @@ async def bridge_expo(request: Request):
 @app.post("/api/bridge/galaxy")
 async def bridge_galaxy(request: Request, payload: dict = Body(...)):
     async with AsyncSessionLocal() as db:
-        user = await require_jwt_user(request, db)
-        if isinstance(user, JSONResponse):
-            return user
+        user, _err = await require_jwt_user(request, db)
+        if _err:
+            return _err
         galaxy = int(payload.get("galaxy", 0) or 0)
         system = int(payload.get("system", 0) or 0)
         if galaxy <= 0 or system <= 0:

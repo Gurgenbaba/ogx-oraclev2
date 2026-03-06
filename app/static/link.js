@@ -38,9 +38,9 @@
   async function doPoll() {
     if (pollCount++ >= MAX_POLLS) {
       stopPolling();
-      showStatus("(I18N['link.timeout'] || 'timeout')", "error");
+      showStatus((I18N['link.timeout'] || 'Zeitüberschreitung. Bitte neuen Code generieren.'), "error");
       qs("#btn-generate").disabled = false;
-      qs("#btn-generate").textContent = "(I18N['link.regenerate'] || 'regenerate')";
+      qs("#btn-generate").textContent = (I18N['link.regenerate'] || 'Neuer Code');
       return;
     }
     try {
@@ -85,7 +85,7 @@
       if (!d.ok) {
         showStatus(d.error || "Error", "error");
         this.disabled = false;
-        this.textContent = "(I18N['link.generate'] || 'generate')";
+        this.textContent = (I18N['link.generate'] || 'Code generieren');
         return;
       }
 
@@ -93,12 +93,12 @@
       qs("#link-code").textContent = d.code;
       qs("#link-code-box").hidden = false;
       qs("#btn-copy-code").hidden = false;
-      this.textContent = "(I18N['link.regenerate'] || 'regenerate')";
+      this.textContent = (I18N['link.regenerate'] || 'Neuer Code');
       this.disabled = false;
 
       // Instruct user + start polling
       showStatus(
-        "<span class='link-spinner'></span>(I18N['link.paste_in_ogx'] || 'paste in ogx')",
+        "<span class='link-spinner'></span>" + (I18N['link.paste_in_ogx'] || 'Code in OGX Einstellungen einfügen'),
         "pending"
       );
       pollTimer = setInterval(doPoll, 4000);
@@ -106,7 +106,7 @@
     } catch(e) {
       showStatus("Network error", "error");
       this.disabled = false;
-      this.textContent = "(I18N['link.generate'] || 'generate')";
+      this.textContent = (I18N['link.generate'] || 'Code generieren');
     }
   });
 
@@ -116,7 +116,7 @@
     navigator.clipboard.writeText(code).then(function() {
       var btn = qs("#btn-copy-code");
       var orig = btn.textContent;
-      btn.textContent = "✓ (I18N['link.copied'] || 'copied')";
+      btn.textContent = '✓ ' + (I18N['link.copied'] || 'Kopiert!');
       setTimeout(function() { btn.textContent = orig; }, 2000);
     });
   });
@@ -140,7 +140,7 @@
   var btnUnlink = qs("#btn-unlink");
   if (btnUnlink) {
     btnUnlink.addEventListener("click", async function() {
-      if (!confirm("(I18N['link.unlink_confirm'] || 'unlink confirm')")) return;
+      if (!confirm((I18N['link.unlink_confirm'] || 'Konto wirklich trennen?'))) return;
       this.disabled = true;
       try {
         var r = await fetch("/api/link/unlink", {
