@@ -1582,22 +1582,28 @@ async def _call_bridge(action: str, params: dict = {}, server_id: str = "uni1") 
 @app.get("/privacy", response_class=HTMLResponse)
 async def privacy_page(request: Request):
     lang = get_lang(request)
+    async with AsyncSessionLocal() as db:
+        current_user, _ = await require_jwt_user(request, db)
     return templates.TemplateResponse("privacy.html", {
         "request": request, "lang": lang,
         "t": get_t(lang), "csrf_token": _csrf_token(request),
         "active_nav": "", "title": "Privacy Policy – OGX Oracle",
         "i18n_js": get_translations_js(lang),
+        "current_user": current_user,
     })
 
 
 @app.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request):
     lang = get_lang(request)
+    async with AsyncSessionLocal() as db:
+        current_user, _ = await require_jwt_user(request, db)
     return templates.TemplateResponse("settings.html", {
         "request": request, "lang": lang,
         "t": get_t(lang), "csrf_token": _csrf_token(request),
         "active_nav": "settings", "title": "Einstellungen – OGX Oracle",
         "i18n_js": get_translations_js(lang),
+        "current_user": current_user,
     })
 
 

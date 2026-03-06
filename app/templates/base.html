@@ -57,6 +57,13 @@
   <footer class="footer wrap">
     <div>{{ t('footer.community') }}</div>
     <div>{{ t('footer.favicon_tip') }}</div>
+    <div class="footer-legal">
+      <a href="/privacy">{{ t('footer.privacy') }}</a>
+      {% if current_user %}
+      <span class="footer-sep">·</span>
+      <a href="/settings">{{ t('footer.settings') }}</a>
+      {% endif %}
+    </div>
   </footer>
   <script src="/static/auth.js" defer></script>
   <script src="/static/player.js" defer></script>
