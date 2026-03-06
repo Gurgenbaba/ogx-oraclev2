@@ -236,5 +236,15 @@
   "system.col_tf": "CF",
   "nav.language": "Langue",
   "link.paste_in_ogx": "Copie ce code et colle-le dans tes paramètres OGX → Profil → OGX Oracle",
-  "link.copied": "Copié !"
+  "link.copied": "Copié !",
+  "prestige.smuggler_title": "Codes Contrebandier",
+  "prestige.smuggler_desc": "Tu as un code ? Échange-le contre des XP Prestige et des badges exclusifs.",
+  "prestige.smuggler_placeholder": "Entrer le code...",
+  "prestige.smuggler_redeem": "Échanger",
+  "prestige.smuggler_success": "Code échangé !",
+  "prestige.smuggler_already": "Tu as déjà échangé ce code.",
+  "prestige.smuggler_not_found": "Code introuvable.",
+  "prestige.smuggler_expired": "Ce code a expiré.",
+  "prestige.smuggler_exhausted": "Ce code a déjà été utilisé.",
+  "prestige.smuggler_error": "Erreur lors de l'échange."
 }

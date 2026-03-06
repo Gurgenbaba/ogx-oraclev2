@@ -1,4 +1,4 @@
-﻿# app/main.py
+# app/main.py
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
@@ -111,6 +111,54 @@ async def lifespan(app: FastAPI):
                 )"""
             await conn.execute(text(_lc_pg if IS_POSTGRES else _lc_sq))
             await conn.execute(text(_la_pg if IS_POSTGRES else _la_sq))
+            _sc_pg = """
+                CREATE TABLE IF NOT EXISTS smuggler_codes (
+                    id SERIAL PRIMARY KEY,
+                    code TEXT NOT NULL UNIQUE,
+                    reward_type TEXT NOT NULL DEFAULT 'prestige_xp',
+                    reward_value INTEGER NOT NULL DEFAULT 100,
+                    badge_id TEXT,
+                    max_uses INTEGER NOT NULL DEFAULT 1,
+                    uses_count INTEGER NOT NULL DEFAULT 0,
+                    created_at TIMESTAMP NOT NULL,
+                    expires_at TIMESTAMP,
+                    created_by TEXT
+                )"""
+            _sc_sq = """
+                CREATE TABLE IF NOT EXISTS smuggler_codes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    code TEXT NOT NULL UNIQUE,
+                    reward_type TEXT NOT NULL DEFAULT 'prestige_xp',
+                    reward_value INTEGER NOT NULL DEFAULT 100,
+                    badge_id TEXT,
+                    max_uses INTEGER NOT NULL DEFAULT 1,
+                    uses_count INTEGER NOT NULL DEFAULT 0,
+                    created_at TIMESTAMP NOT NULL,
+                    expires_at TIMESTAMP,
+                    created_by TEXT
+                )"""
+            _scr_pg = """
+                CREATE TABLE IF NOT EXISTS smuggler_code_redemptions (
+                    id SERIAL PRIMARY KEY,
+                    code_id INTEGER NOT NULL,
+                    user_id INTEGER NOT NULL,
+                    redeemed_at TIMESTAMP NOT NULL,
+                    reward_type TEXT NOT NULL,
+                    reward_value INTEGER NOT NULL,
+                    UNIQUE (code_id, user_id)
+                )"""
+            _scr_sq = """
+                CREATE TABLE IF NOT EXISTS smuggler_code_redemptions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    code_id INTEGER NOT NULL,
+                    user_id INTEGER NOT NULL,
+                    redeemed_at TIMESTAMP NOT NULL,
+                    reward_type TEXT NOT NULL,
+                    reward_value INTEGER NOT NULL,
+                    UNIQUE (code_id, user_id)
+                )"""
+            await conn.execute(text(_sc_pg if IS_POSTGRES else _sc_sq))
+            await conn.execute(text(_scr_pg if IS_POSTGRES else _scr_sq))
         async with AsyncSessionLocal() as db:
             await seed_achievements(db)
     else:
@@ -153,6 +201,27 @@ async def lifespan(app: FastAPI):
                 linked_at TIMESTAMP NOT NULL,
                 UNIQUE (user_id, server_id)
             )""",
+            """CREATE TABLE IF NOT EXISTS smuggler_codes (
+                id SERIAL PRIMARY KEY,
+                code TEXT NOT NULL UNIQUE,
+                reward_type TEXT NOT NULL DEFAULT 'prestige_xp',
+                reward_value INTEGER NOT NULL DEFAULT 100,
+                badge_id TEXT,
+                max_uses INTEGER NOT NULL DEFAULT 1,
+                uses_count INTEGER NOT NULL DEFAULT 0,
+                created_at TIMESTAMP NOT NULL,
+                expires_at TIMESTAMP,
+                created_by TEXT
+            )""",
+            """CREATE TABLE IF NOT EXISTS smuggler_code_redemptions (
+                id SERIAL PRIMARY KEY,
+                code_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                redeemed_at TIMESTAMP NOT NULL,
+                reward_type TEXT NOT NULL,
+                reward_value INTEGER NOT NULL,
+                UNIQUE (code_id, user_id)
+            )""",
         ]
         _bridge_tables_sq = [
             """CREATE TABLE IF NOT EXISTS link_codes (
@@ -173,6 +242,27 @@ async def lifespan(app: FastAPI):
                 game_username TEXT NOT NULL,
                 linked_at TIMESTAMP NOT NULL,
                 UNIQUE (user_id, server_id)
+            )""",
+            """CREATE TABLE IF NOT EXISTS smuggler_codes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                code TEXT NOT NULL UNIQUE,
+                reward_type TEXT NOT NULL DEFAULT 'prestige_xp',
+                reward_value INTEGER NOT NULL DEFAULT 100,
+                badge_id TEXT,
+                max_uses INTEGER NOT NULL DEFAULT 1,
+                uses_count INTEGER NOT NULL DEFAULT 0,
+                created_at TIMESTAMP NOT NULL,
+                expires_at TIMESTAMP,
+                created_by TEXT
+            )""",
+            """CREATE TABLE IF NOT EXISTS smuggler_code_redemptions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                code_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                redeemed_at TIMESTAMP NOT NULL,
+                reward_type TEXT NOT NULL,
+                reward_value INTEGER NOT NULL,
+                UNIQUE (code_id, user_id)
             )""",
         ]
         tables = _bridge_tables_pg if IS_POSTGRES else _bridge_tables_sq
@@ -1275,10 +1365,16 @@ async def ingest_galaxy(request: Request, payload: dict = Body(...)):
                         note=note,
                         last_seen_at=now,
                         source=SRC_HELPER,
-                        debris_metal=debris_metal,
-                        debris_crystal=debris_crystal,
                     )
                 )
+                # Update debris via raw SQL (Colony model may lack these columns)
+                if debris_metal or debris_crystal:
+                    await db.flush()
+                    await db.execute(text(
+                        "UPDATE colonies SET debris_metal=:dm, debris_crystal=:dc "
+                        "WHERE player_id=:pid AND galaxy=:g AND system=:s AND position=:pos"
+                    ), {"dm": debris_metal or 0, "dc": debris_crystal or 0,
+                        "pid": p.id, "g": galaxy, "s": system, "pos": position})
                 imported += 1
 
         await _upsert_galaxy_scan(db, galaxy=galaxy, system=system, scanned_at=now, planets_found=len(rows))
@@ -1296,6 +1392,136 @@ async def ingest_galaxy(request: Request, payload: dict = Body(...)):
         await db.commit()
 
     return {"ok": True, "imported": imported, "updated": updated, "players_created": created_players}
+
+
+# ---------------------------------------------------------------------------
+# Smuggler Codes — Redeem system (Prestige XP + Badge rewards)
+# ---------------------------------------------------------------------------
+
+@app.post("/api/smuggler/redeem")
+async def smuggler_redeem(request: Request):
+    """
+    Redeem a smuggler code for Prestige XP and/or a badge.
+    Codes are generated by Glad. One-time use per user.
+    """
+    async with AsyncSessionLocal() as db:
+        user = await require_jwt_user(request, db)
+        if isinstance(user, JSONResponse):
+            return user
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"ok": False, "error": "invalid_json"}, status_code=400)
+
+        code = (body.get("code") or "").strip().upper()
+        if not code:
+            return JSONResponse({"ok": False, "error": "missing_code"}, status_code=400)
+
+        now = _utcnow_naive()
+
+        # Fetch the code
+        row = (await db.execute(
+            text("SELECT id, reward_type, reward_value, badge_id, max_uses, uses_count, expires_at FROM smuggler_codes WHERE code = :code"),
+            {"code": code}
+        )).fetchone()
+
+        if not row:
+            return JSONResponse({"ok": False, "error": "code_not_found"}, status_code=404)
+
+        if row.expires_at and row.expires_at < now:
+            return JSONResponse({"ok": False, "error": "code_expired"}, status_code=410)
+
+        if row.uses_count >= row.max_uses:
+            return JSONResponse({"ok": False, "error": "code_exhausted"}, status_code=409)
+
+        # Check if this user already redeemed it
+        already = (await db.execute(
+            text("SELECT id FROM smuggler_code_redemptions WHERE code_id = :cid AND user_id = :uid"),
+            {"cid": row.id, "uid": user.id}
+        )).fetchone()
+        if already:
+            return JSONResponse({"ok": False, "error": "already_redeemed"}, status_code=409)
+
+        # Record redemption
+        await db.execute(text("""
+            INSERT INTO smuggler_code_redemptions (code_id, user_id, redeemed_at, reward_type, reward_value)
+            VALUES (:cid, :uid, :now, :rtype, :rval)
+        """), {"cid": row.id, "uid": user.id, "now": now, "rtype": row.reward_type, "rval": row.reward_value})
+
+        # Increment uses_count
+        await db.execute(text("""
+            UPDATE smuggler_codes SET uses_count = uses_count + 1 WHERE id = :cid
+        """), {"cid": row.id})
+
+        rewards_given = []
+
+        # Award Prestige XP
+        if row.reward_value > 0:
+            try:
+                from .prestige import award_op
+                await award_op(db, int(user.id), row.reward_value, reason="smuggler_code")
+                rewards_given.append({"type": "prestige_xp", "value": row.reward_value})
+            except Exception:
+                pass  # prestige module may not have award_op yet
+
+        # Award Badge
+        badge_id = row.badge_id
+        if badge_id:
+            try:
+                existing_badge = (await db.execute(
+                    text("SELECT id FROM user_achievements WHERE user_id = :uid AND achievement_id = :aid"),
+                    {"uid": user.id, "aid": badge_id}
+                )).fetchone()
+                if not existing_badge:
+                    await db.execute(text("""
+                        INSERT INTO user_achievements (user_id, achievement_id, earned_at)
+                        VALUES (:uid, :aid, :now)
+                    """), {"uid": user.id, "aid": badge_id, "now": now})
+                    rewards_given.append({"type": "badge", "badge_id": badge_id})
+            except Exception:
+                pass
+
+        await db.commit()
+
+        return {
+            "ok": True,
+            "rewards": rewards_given,
+            "code": code,
+            "reward_type": row.reward_type,
+            "reward_value": row.reward_value,
+            "badge_id": badge_id,
+        }
+
+
+@app.get("/api/smuggler/status")
+async def smuggler_status(request: Request):
+    """Returns how many smuggler codes the current user has redeemed."""
+    async with AsyncSessionLocal() as db:
+        user = await require_jwt_user(request, db)
+        if isinstance(user, JSONResponse):
+            return user
+        count = (await db.execute(
+            text("SELECT COUNT(*) FROM smuggler_code_redemptions WHERE user_id = :uid"),
+            {"uid": user.id}
+        )).scalar() or 0
+        redeemed = (await db.execute(
+            text("""SELECT sc.code, scr.redeemed_at, scr.reward_type, scr.reward_value, sc.badge_id
+                    FROM smuggler_code_redemptions scr
+                    JOIN smuggler_codes sc ON sc.id = scr.code_id
+                    WHERE scr.user_id = :uid
+                    ORDER BY scr.redeemed_at DESC LIMIT 20"""),
+            {"uid": user.id}
+        )).fetchall()
+        return {
+            "ok": True,
+            "total_redeemed": count,
+            "history": [
+                {"code": r.code, "redeemed_at": r.redeemed_at.isoformat() if r.redeemed_at else None,
+                 "reward_type": r.reward_type, "reward_value": r.reward_value, "badge_id": r.badge_id}
+                for r in redeemed
+            ]
+        }
+
 
 # ---------------------------------------------------------------------------
 # Language — persistent cookie
