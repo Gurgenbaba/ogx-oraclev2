@@ -180,6 +180,31 @@ async def lifespan(app: FastAPI):
             except Exception:
                 pass  # Column already exists — safe to ignore
 
+        # Migrate linked_accounts: add server_id column if missing
+        for stmt in [
+            "ALTER TABLE linked_accounts ADD COLUMN server_id TEXT NOT NULL DEFAULT 'uni1'",
+            "ALTER TABLE linked_accounts DROP CONSTRAINT IF EXISTS linked_accounts_user_id_key",
+            "ALTER TABLE linked_accounts ADD CONSTRAINT linked_accounts_user_server_uq UNIQUE (user_id, server_id)",
+        ]:
+            try:
+                async with engine.begin() as conn:
+                    await conn.execute(text(stmt))
+            except Exception:
+                pass  # Already migrated — safe to ignore
+
+        # Migrate smuggler_codes: drop old redemption tables if schema changed
+        for stmt in [
+            "ALTER TABLE smuggler_codes ADD COLUMN IF NOT EXISTS max_uses INTEGER NOT NULL DEFAULT 1",
+            "ALTER TABLE smuggler_codes ADD COLUMN IF NOT EXISTS uses_count INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE smuggler_codes ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP",
+            "ALTER TABLE smuggler_codes ADD COLUMN IF NOT EXISTS created_by TEXT",
+        ]:
+            try:
+                async with engine.begin() as conn:
+                    await conn.execute(text(stmt))
+            except Exception:
+                pass
+
         # Step 3: bridge tables — each in its own transaction
         _bridge_tables_pg = [
             """CREATE TABLE IF NOT EXISTS link_codes (
@@ -1667,15 +1692,23 @@ async def bridge_status(request: Request):
         user = await require_jwt_user(request, db)
         if isinstance(user, JSONResponse):
             return user
-        row = (await db.execute(
-            text("SELECT game_player_id, game_username, server_id FROM linked_accounts WHERE user_id = :uid LIMIT 1"),
-            {"uid": user.id}
-        )).fetchone()
+        try:
+            row = (await db.execute(
+                text("SELECT game_player_id, game_username, server_id FROM linked_accounts WHERE user_id = :uid LIMIT 1"),
+                {"uid": user.id}
+            )).fetchone()
+        except Exception:
+            # server_id column may not exist yet (migration pending) — fallback query
+            row = (await db.execute(
+                text("SELECT game_player_id, game_username FROM linked_accounts WHERE user_id = :uid LIMIT 1"),
+                {"uid": user.id}
+            )).fetchone()
         if row:
+            server_id = getattr(row, "server_id", None) or "uni1"
             return {"ok": True, "linked": True,
                     "game_username": row.game_username,
                     "game_player_id": row.game_player_id,
-                    "server_id": row.server_id or "uni1"}
+                    "server_id": server_id}
         return {"ok": True, "linked": False}
 
 
