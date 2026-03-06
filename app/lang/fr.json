@@ -246,5 +246,6 @@
   "prestige.smuggler_not_found": "Code introuvable.",
   "prestige.smuggler_expired": "Ce code a expiré.",
   "prestige.smuggler_exhausted": "Ce code a déjà été utilisé.",
-  "prestige.smuggler_error": "Erreur lors de l'échange."
+  "prestige.smuggler_error": "Erreur lors de l'échange.",
+  "link.timeout": "Délai dépassé. Veuillez générer un nouveau code."
 }

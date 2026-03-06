@@ -1574,18 +1574,19 @@ async def api_set_lang(request: Request):
 # Glad Bridge — Account Linking & Galaxy Sync
 # ---------------------------------------------------------------------------
 
-def _bridge_url(action: str, params: dict = {}) -> str:
+def _bridge_url(action: str, params: dict = {}, server_id: str = "uni1") -> str:
     base = getattr(settings, "glad_bridge_url", "") or ""
     secret = getattr(settings, "glad_bridge_secret", "") or ""
-    p = f"action={action}&secret={secret}"
+    p = f"action={action}&secret={secret}&server_id={server_id}"
     for k, v in params.items():
-        p += f"&{k}={v}"
+        if k != "server_id":  # avoid duplicate
+            p += f"&{k}={v}"
     return f"{base}?{p}"
 
-async def _call_bridge(action: str, params: dict = {}) -> dict:
+async def _call_bridge(action: str, params: dict = {}, server_id: str = "uni1") -> dict:
     try:
         import httpx
-        url = _bridge_url(action, params)
+        url = _bridge_url(action, params, server_id=server_id)
         async with httpx.AsyncClient(timeout=8.0) as client:
             r = await client.get(url)
             r.raise_for_status()
@@ -1627,46 +1628,59 @@ async def link_start(request: Request):
         return {"ok": True, "code": code}
 
 
-@app.post("/api/link/confirm")
-async def link_confirm(request: Request):
+@app.post("/api/link/poll")
+async def link_poll(request: Request):
     """
-    Called by Glad's server when a player saves their Oracle code in OGX settings.
-    No polling needed — Glad pushes directly to this endpoint.
+    Client polls this after showing the code to the user.
+    Oracle calls Glad's verify endpoint; if the player has saved the code in OGX
+    Preferences, Glad returns player_id + username and we finalise the link.
 
-    Body JSON:
-      { "code": "OGX-XXXXXX", "player_id": 123, "username": "Spielername",
-        "server_id": "universum-1", "secret": "GLAD_BRIDGE_SECRET" }
+    Body JSON: { "server_id": "uni1" }   (optional, defaults to "uni1")
     """
-    try:
-        body = await request.json()
-    except Exception:
-        return JSONResponse({"ok": False, "error": "invalid_json"}, status_code=400)
-
-    # Validate shared secret
-    expected_secret = getattr(settings, "glad_bridge_secret", "") or ""
-    incoming_secret = (body.get("secret") or "").strip()
-    if not expected_secret or not _consteq(expected_secret, incoming_secret):
-        return JSONResponse({"ok": False, "error": "invalid_secret"}, status_code=403)
-
-    code       = (body.get("code") or "").strip().upper()
-    player_id  = body.get("player_id")
-    username   = (body.get("username") or "").strip()
-    server_id  = (body.get("server_id") or "universum-1").strip()
-
-    if not code or not player_id or not username:
-        return JSONResponse({"ok": False, "error": "missing_fields"}, status_code=400)
-
     async with AsyncSessionLocal() as db:
-        # Find the matching code
+        user = await require_jwt_user(request, db)
+        if isinstance(user, JSONResponse):
+            return user
+
+        # Get user's pending link code
         row = (await db.execute(
-            text("SELECT user_id, used FROM link_codes WHERE code = :code"),
-            {"code": code}
+            text("SELECT code, used FROM link_codes WHERE user_id = :uid"),
+            {"uid": user.id}
         )).fetchone()
 
         if not row:
-            return JSONResponse({"ok": False, "error": "code_not_found"}, status_code=404)
+            return JSONResponse({"ok": False, "error": "no_code"}, status_code=404)
         if row.used:
-            return JSONResponse({"ok": False, "error": "code_already_used"}, status_code=409)
+            # Already linked — return existing account
+            linked = (await db.execute(
+                text("SELECT game_player_id, game_username, server_id FROM linked_accounts WHERE user_id = :uid LIMIT 1"),
+                {"uid": user.id}
+            )).fetchone()
+            return {"ok": True, "linked": True,
+                    "game_username": linked.game_username if linked else "",
+                    "game_player_id": linked.game_player_id if linked else None}
+
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        server_id = (body.get("server_id") or "uni1").strip()
+
+        # Call Glad's verify endpoint
+        bridge_result = await _call_bridge("verify", {"code": row.code}, server_id=server_id)
+
+        if not bridge_result.get("ok"):
+            err = bridge_result.get("error", "")
+            if err == "code_pending":
+                return {"ok": True, "linked": False, "pending": True}
+            return {"ok": False, "error": err or "bridge_error"}
+
+        player_id = bridge_result.get("player_id")
+        username  = (bridge_result.get("username") or "").strip()
+        returned_server = (bridge_result.get("server_id") or server_id).strip()
+
+        if not player_id or not username:
+            return {"ok": False, "error": "bridge_missing_fields"}
 
         now = _utcnow_naive()
 
@@ -1674,26 +1688,26 @@ async def link_confirm(request: Request):
         await db.execute(text("""
             UPDATE link_codes
             SET used = true, game_player_id = :gid, game_username = :gun, verified_at = :now
-            WHERE code = :code
-        """), {"gid": player_id, "gun": username, "now": now, "code": code})
+            WHERE user_id = :uid
+        """), {"gid": player_id, "gun": username, "now": now, "uid": user.id})
 
-        # Upsert linked_accounts (per user + server)
+        # Upsert linked_accounts
         if IS_POSTGRES:
             await db.execute(text("""
                 INSERT INTO linked_accounts (user_id, server_id, game_player_id, game_username, linked_at)
                 VALUES (:uid, :sid, :gid, :gun, :now)
                 ON CONFLICT (user_id, server_id) DO UPDATE
                     SET game_player_id = :gid, game_username = :gun, linked_at = :now
-            """), {"uid": row.user_id, "sid": server_id, "gid": player_id, "gun": username, "now": now})
+            """), {"uid": user.id, "sid": returned_server, "gid": player_id, "gun": username, "now": now})
         else:
             await db.execute(text("""
                 INSERT OR REPLACE INTO linked_accounts (user_id, server_id, game_player_id, game_username, linked_at)
                 VALUES (:uid, :sid, :gid, :gun, :now)
-            """), {"uid": row.user_id, "sid": server_id, "gid": player_id, "gun": username, "now": now})
+            """), {"uid": user.id, "sid": returned_server, "gid": player_id, "gun": username, "now": now})
 
         await db.commit()
 
-    return {"ok": True, "message": "account linked successfully"}
+        return {"ok": True, "linked": True, "game_username": username, "game_player_id": player_id}
 
 
 @app.post("/api/link/unlink")
@@ -1716,11 +1730,14 @@ async def bridge_status(request: Request):
         if isinstance(user, JSONResponse):
             return user
         row = (await db.execute(
-            text("SELECT game_player_id, game_username FROM linked_accounts WHERE user_id = :uid"),
+            text("SELECT game_player_id, game_username, server_id FROM linked_accounts WHERE user_id = :uid LIMIT 1"),
             {"uid": user.id}
         )).fetchone()
         if row:
-            return {"ok": True, "linked": True, "game_username": row.game_username, "game_player_id": row.game_player_id}
+            return {"ok": True, "linked": True,
+                    "game_username": row.game_username,
+                    "game_player_id": row.game_player_id,
+                    "server_id": row.server_id or "uni1"}
         return {"ok": True, "linked": False}
 
 
@@ -1730,13 +1747,19 @@ async def bridge_expo(request: Request):
         user = await require_jwt_user(request, db)
         if isinstance(user, JSONResponse):
             return user
-        row = (await db.execute(
-            text("SELECT game_player_id FROM linked_accounts WHERE user_id = :uid"),
+        # Glad's expo action uses the link code for auth (not player_id directly)
+        link_row = (await db.execute(
+            text("SELECT l.code, l.used, la.server_id FROM link_codes l "
+                 "LEFT JOIN linked_accounts la ON la.user_id = l.user_id "
+                 "WHERE l.user_id = :uid AND l.used = true LIMIT 1"),
             {"uid": user.id}
         )).fetchone()
-        if not row:
+        if not link_row:
             return {"ok": False, "error": "not_linked"}
-        return await _call_bridge("expo", {"player_id": row.game_player_id})
+        server_id = (link_row.server_id or "uni1").strip()
+        since = request.query_params.get("since", "0")
+        limit = request.query_params.get("limit", "500")
+        return await _call_bridge("expo", {"code": link_row.code, "since": since, "limit": limit}, server_id=server_id)
 
 
 @app.post("/api/bridge/galaxy")

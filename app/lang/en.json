@@ -246,5 +246,6 @@
   "prestige.smuggler_not_found": "Code not found.",
   "prestige.smuggler_expired": "This code has expired.",
   "prestige.smuggler_exhausted": "This code has already been used.",
-  "prestige.smuggler_error": "Error redeeming code."
+  "prestige.smuggler_error": "Error redeeming code.",
+  "link.timeout": "Verification timed out. Please generate a new code."
 }

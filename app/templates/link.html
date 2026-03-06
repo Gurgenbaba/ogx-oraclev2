@@ -115,13 +115,56 @@
     qs("#link-flow").hidden = true;
     qs("#link-already").hidden = false;
     qs("#link-linked-name").textContent = username;
-    var serverLabel = serverId === "ptu" ? "PTU" : "Universum 1";
+    var serverLabel = {"uni1": "OGX Uni 1", "beta": "OGX Beta"}[serverId] || serverId || "OGX";
     var el = qs("#link-server-name");
     if (el) el.textContent = serverLabel;
   }
 
-  // Generate code — just calls /api/link/start, shows code to copy
+  var pollTimer = null;
+  var pollCount = 0;
+  var MAX_POLLS = 60; // 4 minutes at 4s interval
+
+  function stopPolling() {
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    pollCount = 0;
+  }
+
+  async function doPoll() {
+    if (pollCount++ >= MAX_POLLS) {
+      stopPolling();
+      showStatus("{{ t('link.timeout') }}", "error");
+      qs("#btn-generate").disabled = false;
+      qs("#btn-generate").textContent = "{{ t('link.regenerate') }}";
+      return;
+    }
+    try {
+      var r = await fetch("/api/link/poll", {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer " + token(),
+          "x-csrf-token": csrfToken(),
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ server_id: "uni1" })
+      });
+      var d = await r.json();
+      if (!d.ok) {
+        stopPolling();
+        showStatus(d.error || "Error", "error");
+        qs("#btn-generate").disabled = false;
+        return;
+      }
+      if (d.linked) {
+        stopPolling();
+        showLinked(d.game_username, d.server_id || "uni1");
+      }
+      // d.pending === true → keep polling
+    } catch(e) { /* keep trying */ }
+  }
+
+  // Generate code — calls /api/link/start, then starts polling verify
   qs("#btn-generate").addEventListener("click", async function() {
+    stopPolling();
     this.disabled = true;
     this.textContent = "...";
     try {
@@ -147,8 +190,12 @@
       this.textContent = "{{ t('link.regenerate') }}";
       this.disabled = false;
 
-      // Show instruction: paste this code in OGX settings
-      showStatus("{{ t('link.paste_in_ogx') }}", "pending");
+      // Instruct user + start polling
+      showStatus(
+        "<span class='link-spinner'></span>{{ t('link.paste_in_ogx') }}",
+        "pending"
+      );
+      pollTimer = setInterval(doPoll, 4000);
 
     } catch(e) {
       showStatus("Network error", "error");

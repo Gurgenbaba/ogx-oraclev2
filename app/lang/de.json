@@ -246,5 +246,6 @@
   "prestige.smuggler_not_found": "Code nicht gefunden.",
   "prestige.smuggler_expired": "Dieser Code ist abgelaufen.",
   "prestige.smuggler_exhausted": "Dieser Code wurde bereits aufgebraucht.",
-  "prestige.smuggler_error": "Fehler beim Einlösen."
+  "prestige.smuggler_error": "Fehler beim Einlösen.",
+  "link.timeout": "Zeitüberschreitung. Bitte neuen Code generieren."
 }
