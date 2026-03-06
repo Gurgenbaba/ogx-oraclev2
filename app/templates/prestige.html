@@ -2,7 +2,6 @@
 {% block head_extra %}
   <link rel="stylesheet" href="/static/prestige.css" />
 
-  <script src="/static/prestige-inline.js" defer></script>
 {% endblock %}
 
 {% block content %}
@@ -44,11 +43,6 @@
         <div class="psg-stat-lbl">{{ t('prestige.scans') }}</div>
       </div>
       <div class="psg-stat-card">
-        <div class="psg-stat-icon">📦</div>
-        <div class="psg-stat-val" id="psg-smuggler-count">0</div>
-        <div class="psg-stat-lbl">{{ t('prestige.smuggler_codes') }}</div>
-      </div>
-      <div class="psg-stat-card">
         <div class="psg-stat-icon">🔥</div>
         <div class="psg-stat-val" id="psg-streak">0</div>
         <div class="psg-stat-lbl">{{ t('prestige.streak') }}</div>
@@ -79,14 +73,6 @@
       </table>
     </div>
 
-
-    <!-- Smuggler Codes — found via expeditions -->
-    <div class="psg-section" id="psg-smuggler-section">
-      <h2 class="psg-section-title">{{ t('prestige.smuggler_title') }}</h2>
-      <p class="psg-smuggler-desc">{{ t('prestige.smuggler_desc') }}</p>
-      <div id="psg-smuggler-list" class="psg-smuggler-history"></div>
-      <div id="psg-smuggler-empty" class="psg-smuggler-empty" hidden>{{ t('prestige.smuggler_empty') }}</div>
-    </div>
 
     </div><!-- /#psg-content -->
 </div>

@@ -192,19 +192,6 @@ async def lifespan(app: FastAPI):
             except Exception:
                 pass  # Already migrated — safe to ignore
 
-        # Migrate smuggler_codes: drop old redemption tables if schema changed
-        for stmt in [
-            "ALTER TABLE smuggler_codes ADD COLUMN IF NOT EXISTS max_uses INTEGER NOT NULL DEFAULT 1",
-            "ALTER TABLE smuggler_codes ADD COLUMN IF NOT EXISTS uses_count INTEGER NOT NULL DEFAULT 0",
-            "ALTER TABLE smuggler_codes ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP",
-            "ALTER TABLE smuggler_codes ADD COLUMN IF NOT EXISTS created_by TEXT",
-        ]:
-            try:
-                async with engine.begin() as conn:
-                    await conn.execute(text(stmt))
-            except Exception:
-                pass
-
         # Step 3: bridge tables — each in its own transaction
         _bridge_tables_pg = [
             """CREATE TABLE IF NOT EXISTS link_codes (
@@ -247,17 +234,6 @@ async def lifespan(app: FastAPI):
                 reward_value INTEGER NOT NULL,
                 UNIQUE (code_id, user_id)
             )""",
-            """CREATE TABLE IF NOT EXISTS smuggler_found_codes (
-                id SERIAL PRIMARY KEY,
-                user_id INTEGER NOT NULL,
-                server_id TEXT NOT NULL DEFAULT 'uni1',
-                code TEXT NOT NULL,
-                level INTEGER NOT NULL DEFAULT 1,
-                found_at TIMESTAMP NOT NULL,
-                expo_date TIMESTAMP,
-                prestige_xp_awarded INTEGER NOT NULL DEFAULT 0,
-                UNIQUE (user_id, code)
-            )""",
         ]
         _bridge_tables_sq = [
             """CREATE TABLE IF NOT EXISTS link_codes (
@@ -299,17 +275,6 @@ async def lifespan(app: FastAPI):
                 reward_type TEXT NOT NULL,
                 reward_value INTEGER NOT NULL,
                 UNIQUE (code_id, user_id)
-            )""",
-            """CREATE TABLE IF NOT EXISTS smuggler_found_codes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                server_id TEXT NOT NULL DEFAULT 'uni1',
-                code TEXT NOT NULL,
-                level INTEGER NOT NULL DEFAULT 1,
-                found_at TIMESTAMP NOT NULL,
-                expo_date TIMESTAMP,
-                prestige_xp_awarded INTEGER NOT NULL DEFAULT 0,
-                UNIQUE (user_id, code)
             )""",
         ]
         tables = _bridge_tables_pg if IS_POSTGRES else _bridge_tables_sq
@@ -1442,40 +1407,6 @@ async def ingest_galaxy(request: Request, payload: dict = Body(...)):
 
 
 # ---------------------------------------------------------------------------
-# Smuggler Codes — found via Bridge expo sync
-# ---------------------------------------------------------------------------
-
-@app.get("/api/smuggler/codes")
-async def smuggler_codes(request: Request):
-    """Returns all smuggler codes the current user has found via expeditions."""
-    async with AsyncSessionLocal() as db:
-        user, _err = await require_jwt_user(request, db)
-        if _err:
-            return _err
-
-        rows = (await db.execute(
-            text("""SELECT code, level, found_at, expo_date, prestige_xp_awarded
-                    FROM smuggler_found_codes
-                    WHERE user_id = :uid
-                    ORDER BY found_at DESC"""),
-            {"uid": user.id}
-        )).fetchall()
-
-        return {
-            "ok": True,
-            "total": len(rows),
-            "codes": [
-                {
-                    "code": r.code,
-                    "level": r.level,
-                    "found_at": r.found_at.isoformat() if r.found_at else None,
-                    "expo_date": r.expo_date.isoformat() if r.expo_date else None,
-                    "prestige_xp": r.prestige_xp_awarded,
-                }
-                for r in rows
-            ]
-        }
-
 # ---------------------------------------------------------------------------
 # Account self-deletion (DSGVO Art. 17)
 # ---------------------------------------------------------------------------
@@ -1491,8 +1422,6 @@ async def account_delete(request: Request):
         uid = int(user.id)
 
         for tbl in [
-            "smuggler_found_codes",
-            "smuggler_code_redemptions",
             "user_achievements",
             "link_codes",
             "linked_accounts",
@@ -1797,74 +1726,8 @@ async def bridge_expo(request: Request):
         if not result.get("ok"):
             return result
 
-        # Process expedition list — extract smuggler codes
-        expeditions = result.get("expeditions", [])
-        now = _utcnow_naive()
-        smuggler_found = 0
-        xp_earned = 0
-
-        for expo in expeditions:
-            smuggler_code = (expo.get("smuggler_code") or "").strip()
-            if not smuggler_code:
-                continue
-
-            smuggler_level = int(expo.get("smuggler_level") or 1)
-            xp_per_level = {1: 100, 2: 250, 3: 500}
-            xp = xp_per_level.get(smuggler_level, 100)
-
-            expo_date_str = expo.get("date") or ""
-            expo_date = None
-            try:
-                from datetime import datetime as _dt
-                expo_date = _dt.fromisoformat(expo_date_str.replace("Z", "+00:00")).replace(tzinfo=None)
-            except Exception:
-                pass
-
-            # Upsert into smuggler_found_codes (UNIQUE user_id + code)
-            try:
-                if IS_POSTGRES:
-                    await db.execute(text("""
-                        INSERT INTO smuggler_found_codes
-                            (user_id, server_id, code, level, found_at, expo_date, prestige_xp_awarded)
-                        VALUES (:uid, :sid, :code, :lvl, :now, :ed, :xp)
-                        ON CONFLICT (user_id, code) DO NOTHING
-                    """), {"uid": user.id, "sid": server_id, "code": smuggler_code,
-                           "lvl": smuggler_level, "now": now, "ed": expo_date, "xp": xp})
-                else:
-                    await db.execute(text("""
-                        INSERT OR IGNORE INTO smuggler_found_codes
-                            (user_id, server_id, code, level, found_at, expo_date, prestige_xp_awarded)
-                        VALUES (:uid, :sid, :code, :lvl, :now, :ed, :xp)
-                    """), {"uid": user.id, "sid": server_id, "code": smuggler_code,
-                           "lvl": smuggler_level, "now": now, "ed": expo_date, "xp": xp})
-
-                # Check if this was a new insert (rows_affected > 0 means new)
-                inserted = (await db.execute(
-                    text("SELECT id FROM smuggler_found_codes WHERE user_id = :uid AND code = :code AND found_at = :now"),
-                    {"uid": user.id, "code": smuggler_code, "now": now}
-                )).fetchone()
-
-                if inserted:
-                    smuggler_found += 1
-                    xp_earned += xp
-            except Exception:
-                pass  # never block expo sync on smuggler errors
-
-        # Award Prestige XP for newly found codes
-        if xp_earned > 0:
-            try:
-                from .prestige import award_op
-                await award_op(db, int(user.id), xp_earned, reason="smuggler_found")
-            except Exception:
-                pass
-
         await db.commit()
-
-        return {
-            **result,
-            "smuggler_found_this_sync": smuggler_found,
-            "smuggler_xp_earned": xp_earned,
-        }
+        return result
 
 
 @app.post("/api/bridge/galaxy")
@@ -1926,4 +1789,3 @@ async def bridge_galaxy(request: Request, payload: dict = Body(...)):
                                   scanned_at=now, planets_found=imported)
         await db.commit()
         return {"ok": True, "imported": imported}
-
