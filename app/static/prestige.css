@@ -328,54 +328,10 @@
   font-size: .9rem;
   margin-bottom: .75rem;
 }
-.psg-smuggler-input-row {
-  display: flex;
-  gap: .5rem;
-  flex-wrap: wrap;
-  align-items: center;
-}
-.psg-smuggler-input-row input {
-  flex: 1;
-  min-width: 180px;
-  padding: .5rem .75rem;
-  background: rgba(255,255,255,.06);
-  border: 1px solid rgba(255,255,255,.15);
-  border-radius: 6px;
-  color: #e8f0ff;
-  font-size: .95rem;
-  letter-spacing: .05em;
-  text-transform: uppercase;
-}
-.psg-smuggler-input-row input::placeholder { text-transform: none; color: #556; }
-.psg-smuggler-input-row button {
-  padding: .5rem 1.2rem;
-  background: linear-gradient(135deg, #f0a020, #e07010);
-  border: none;
-  border-radius: 6px;
-  color: #fff;
-  font-weight: 700;
-  cursor: pointer;
-  transition: opacity .2s;
-}
-.psg-smuggler-input-row button:hover { opacity: .85; }
-.psg-smuggler-input-row button:disabled { opacity: .5; cursor: not-allowed; }
-
-.psg-smuggler-status {
-  margin-top: .6rem;
-  padding: .5rem .75rem;
-  border-radius: 6px;
-  font-size: .9rem;
-  font-weight: 600;
-}
-.psg-smuggler-status.success {
-  background: rgba(0,200,100,.15);
-  border: 1px solid rgba(0,200,100,.3);
-  color: #4dff9e;
-}
-.psg-smuggler-status.error {
-  background: rgba(255,60,60,.12);
-  border: 1px solid rgba(255,60,60,.25);
-  color: #ff7070;
+.psg-smuggler-empty {
+  color: var(--text-muted, #556677);
+  font-size: .85rem;
+  padding: .5rem 0;
 }
 
 .psg-smuggler-history {
@@ -394,5 +350,7 @@
   font-size: .82rem;
   color: #99aacc;
 }
-.psg-smuggler-history-item .code { color: #f0c060; font-family: monospace; }
-.psg-smuggler-history-item .reward { color: #7affb2; }
+.psg-smuggler-history-item .code   { color: #f0c060; font-family: monospace; }
+.psg-smuggler-history-item .level  { background: rgba(240,160,32,.15); color: #f0a020; border-radius: 4px; padding: 1px 6px; font-size: .75rem; font-weight: 700; }
+.psg-smuggler-history-item .date   { color: #556677; font-size: .78rem; }
+.psg-smuggler-history-item .reward { color: #7affb2; font-size: .82rem; }

@@ -238,14 +238,7 @@
   "link.paste_in_ogx": "Kopiere diesen Code und füge ihn in deinen OGX-Einstellungen ein → Profil → OGX Oracle",
   "link.copied": "Kopiert!",
   "prestige.smuggler_title": "Schmuggler-Codes",
-  "prestige.smuggler_desc": "Hast du einen Code? Löse ihn für Prestige-XP und exklusive Badges ein.",
-  "prestige.smuggler_placeholder": "Code eingeben...",
-  "prestige.smuggler_redeem": "Einlösen",
-  "prestige.smuggler_success": "Code eingelöst!",
-  "prestige.smuggler_already": "Du hast diesen Code bereits eingelöst.",
-  "prestige.smuggler_not_found": "Code nicht gefunden.",
-  "prestige.smuggler_expired": "Dieser Code ist abgelaufen.",
-  "prestige.smuggler_exhausted": "Dieser Code wurde bereits aufgebraucht.",
-  "prestige.smuggler_error": "Fehler beim Einlösen.",
-  "link.timeout": "Zeitüberschreitung. Bitte neuen Code generieren."
+  "prestige.smuggler_desc": "Codes aus Expeditionen. Im Spiel auf dem Markt einlösbar.",
+  "link.timeout": "Zeitüberschreitung. Bitte neuen Code generieren.",
+  "prestige.smuggler_empty": "Noch keine Schmuggler-Codes gefunden. Weiter Expeditionen schicken."
 }

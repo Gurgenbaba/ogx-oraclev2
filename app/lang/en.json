@@ -238,14 +238,7 @@
   "link.paste_in_ogx": "Copy this code and paste it in your OGX settings → Profile → OGX Oracle",
   "link.copied": "Copied!",
   "prestige.smuggler_title": "Smuggler Codes",
-  "prestige.smuggler_desc": "Have a code? Redeem it for Prestige XP and exclusive badges.",
-  "prestige.smuggler_placeholder": "Enter code...",
-  "prestige.smuggler_redeem": "Redeem",
-  "prestige.smuggler_success": "Code redeemed!",
-  "prestige.smuggler_already": "You already redeemed this code.",
-  "prestige.smuggler_not_found": "Code not found.",
-  "prestige.smuggler_expired": "This code has expired.",
-  "prestige.smuggler_exhausted": "This code has already been used.",
-  "prestige.smuggler_error": "Error redeeming code.",
-  "link.timeout": "Verification timed out. Please generate a new code."
+  "prestige.smuggler_desc": "Codes found during expeditions. Use them in-game on the Market.",
+  "link.timeout": "Verification timed out. Please generate a new code.",
+  "prestige.smuggler_empty": "No smuggler codes found yet. Keep running expeditions."
 }

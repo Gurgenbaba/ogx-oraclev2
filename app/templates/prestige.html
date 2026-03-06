@@ -5,104 +5,45 @@
   <script>
   (function() {
     function token() { return localStorage.getItem("ogx_jwt") || ""; }
-    function csrfToken() {
-      var m = document.querySelector('meta[name="csrf-token"]');
-      return m ? m.getAttribute("content") : "";
-    }
-    function t(key) {
-      if (window.__i18n && window.__i18n[key]) return window.__i18n[key];
-      var fallback = {"prestige.smuggler_success":"Code eingelöst! ","prestige.smuggler_already":"Bereits eingelöst.","prestige.smuggler_not_found":"Code nicht gefunden.","prestige.smuggler_expired":"Code abgelaufen.","prestige.smuggler_exhausted":"Code bereits aufgebraucht.","prestige.smuggler_error":"Fehler beim Einlösen."};
-      return fallback[key] || key;
-    }
+    var listEl  = document.getElementById("psg-smuggler-list");
+    var emptyEl = document.getElementById("psg-smuggler-empty");
+    var counter = document.getElementById("psg-smuggler-count");
 
-    var btn = document.getElementById("psg-smuggler-btn");
-    var inp = document.getElementById("psg-smuggler-input");
-    var statusEl = document.getElementById("psg-smuggler-status");
-    var histEl = document.getElementById("psg-smuggler-history");
+    var LEVEL_LABEL = { 1: "Lvl 1", 2: "Lvl 2", 3: "Lvl 3" };
 
-    function showStatus(msg, cls) {
-      statusEl.textContent = msg;
-      statusEl.className = "psg-smuggler-status " + cls;
-      statusEl.hidden = false;
-      setTimeout(function() { statusEl.hidden = true; }, 6000);
-    }
-
-    function renderHistory(items) {
-      histEl.innerHTML = "";
-      items.forEach(function(r) {
-        var div = document.createElement("div");
-        div.className = "psg-smuggler-history-item";
-        var reward = r.reward_type === "prestige_xp" ? "+" + r.reward_value + " OP" : "🏅 " + (r.badge_id || "Badge");
-        if (r.badge_id) reward += " + 🏅";
-        div.innerHTML = '<span class="code">' + r.code + '</span><span class="reward">' + reward + '</span>';
-        histEl.appendChild(div);
-      });
-    }
-
-    // Load history on page load
-    async function loadHistory() {
+    async function loadCodes() {
       try {
-        var res = await fetch("/api/smuggler/status", {
+        var res = await fetch("/api/smuggler/codes", {
           headers: { "Authorization": "Bearer " + token() }
         });
         var d = await res.json();
-        if (d.ok && d.history && d.history.length) {
-          renderHistory(d.history);
+        if (!d.ok || !d.codes) return;
+
+        if (counter) counter.textContent = d.total;
+
+        if (d.codes.length === 0) {
+          if (emptyEl) emptyEl.hidden = false;
+          return;
         }
-        // Update counter in stats
-        var counter = document.getElementById("psg-smuggler-count");
-        if (counter && d.total_redeemed !== undefined) {
-          counter.textContent = d.total_redeemed;
-        }
+        if (emptyEl) emptyEl.hidden = true;
+
+        listEl.innerHTML = "";
+        d.codes.forEach(function(c) {
+          var div = document.createElement("div");
+          div.className = "psg-smuggler-history-item";
+          var dateStr = c.expo_date ? new Date(c.expo_date).toLocaleDateString() : "";
+          var xpStr = c.prestige_xp > 0 ? "+" + c.prestige_xp + " OP" : "";
+          div.innerHTML =
+            '<span class="code">' + c.code + '</span>' +
+            '<span class="level">' + (LEVEL_LABEL[c.level] || "Lvl " + c.level) + '</span>' +
+            (dateStr ? '<span class="date">' + dateStr + '</span>' : '') +
+            (xpStr   ? '<span class="reward">' + xpStr + '</span>' : '');
+          listEl.appendChild(div);
+        });
       } catch(e) {}
     }
 
-    if (btn) {
-      btn.addEventListener("click", async function() {
-        var code = inp.value.trim().toUpperCase();
-        if (!code) return;
-        btn.disabled = true;
-        btn.textContent = "...";
-        try {
-          var res = await fetch("/api/smuggler/redeem", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": "Bearer " + token(),
-              "x-csrf-token": csrfToken()
-            },
-            body: JSON.stringify({ code: code })
-          });
-          var d = await res.json();
-          if (d.ok) {
-            var msg = "✓ " + code + " — ";
-            if (d.reward_value > 0) msg += "+" + d.reward_value + " OP";
-            if (d.badge_id) msg += " + 🏅 Badge";
-            showStatus(msg, "success");
-            inp.value = "";
-            loadHistory();
-          } else {
-            var errMap = {
-              "already_redeemed": t("prestige.smuggler_already"),
-              "code_not_found": t("prestige.smuggler_not_found"),
-              "code_expired": t("prestige.smuggler_expired"),
-              "code_exhausted": t("prestige.smuggler_exhausted"),
-            };
-            showStatus(errMap[d.error] || t("prestige.smuggler_error") + " " + (d.error || ""), "error");
-          }
-        } catch(e) {
-          showStatus(t("prestige.smuggler_error"), "error");
-        }
-        btn.disabled = false;
-        btn.textContent = document.querySelector("[data-i18n='prestige.smuggler_redeem']")?.textContent || "Einlösen";
-      });
-
-      inp.addEventListener("keydown", function(e) {
-        if (e.key === "Enter") btn.click();
-      });
-
-      loadHistory();
-    }
+    if (listEl) loadCodes();
   })();
   </script>
 {% endblock %}
@@ -182,18 +123,12 @@
     </div>
 
 
-    <!-- Smuggler Codes -->
+    <!-- Smuggler Codes — found via expeditions -->
     <div class="psg-section" id="psg-smuggler-section">
-      <h2 class="psg-section-title">📦 {{ t('prestige.smuggler_title') }}</h2>
+      <h2 class="psg-section-title">{{ t('prestige.smuggler_title') }}</h2>
       <p class="psg-smuggler-desc">{{ t('prestige.smuggler_desc') }}</p>
-      <div class="psg-smuggler-input-row">
-        <input type="text" id="psg-smuggler-input"
-               placeholder="{{ t('prestige.smuggler_placeholder') }}"
-               maxlength="32" autocomplete="off" autocapitalize="characters" spellcheck="false" />
-        <button id="psg-smuggler-btn">{{ t('prestige.smuggler_redeem') }}</button>
-      </div>
-      <div id="psg-smuggler-status" class="psg-smuggler-status" hidden></div>
-      <div id="psg-smuggler-history" class="psg-smuggler-history"></div>
+      <div id="psg-smuggler-list" class="psg-smuggler-history"></div>
+      <div id="psg-smuggler-empty" class="psg-smuggler-empty" hidden>{{ t('prestige.smuggler_empty') }}</div>
     </div>
 
     </div><!-- /#psg-content -->
