@@ -1,4 +1,4 @@
-# app/main.py
+# app/main.py  — deployed 2026-03-06 19:55 UTC
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
