@@ -220,11 +220,10 @@
   "link.subtitle": "Verbinde dein OGX In-Game Konto mit Oracle",
   "link.step1_title": "Code generieren",
   "link.step1_desc": "Klicke auf den Button um deinen einzigartigen Verifizierungscode zu generieren.",
-  "link.step2_title": "Code im Spiel senden",
-  "link.step2_desc": "Sende eine Privatnachricht mit deinem Code an den OracleBot Account in OGX.",
-  "link.step3_title": "Fertig!",
-  "link.step3_desc": "Oracle erkennt deine Nachricht automatisch und verknüpft deinen Account. Das dauert bis zu 30 Sekunden.",
-  "link.code_hint": "Sende diesen Code als Privatnachricht im Spiel an OracleBot",
+  "link.step2_title": "Code einfügen",
+  "link.step2_desc": "Öffne OGX → Einstellungen → Profil → OGX Oracle Feld → Code einfügen → Speichern.",
+  "link.step3_title": "Warten",
+  "link.step3_desc": "Oracle prüft automatisch alle paar Sekunden ob der Code gespeichert wurde.",
   "link.generate_btn": "Code generieren",
   "link.regenerate": "Neuer Code",
   "link.waiting": "Warte auf Bestätigung...",
@@ -240,5 +239,8 @@
   "prestige.smuggler_title": "Schmuggler-Codes",
   "prestige.smuggler_desc": "Codes aus Expeditionen. Im Spiel auf dem Markt einlösbar.",
   "link.timeout": "Zeitüberschreitung. Bitte neuen Code generieren.",
-  "prestige.smuggler_empty": "Noch keine Schmuggler-Codes gefunden. Weiter Expeditionen schicken."
+  "prestige.smuggler_empty": "Noch keine Schmuggler-Codes gefunden. Weiter Expeditionen schicken.",
+  "link.step4_title": "Fertig!",
+  "link.step4_desc": "Dein Spielkonto ist verknüpft. Expeditionen und Galaxy-Daten werden ab jetzt synchronisiert.",
+  "link.generate": "Code generieren"
 }
