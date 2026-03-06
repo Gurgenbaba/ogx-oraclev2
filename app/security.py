@@ -413,8 +413,9 @@ class CsrfMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         path = request.url.path or ""
 
-        # Bypass CSRF for API-like endpoints (collector + auth)
-        if path.startswith("/ingest/") or path.startswith("/auth/"):
+        # Bypass CSRF for API-like endpoints (collector + auth + link + bridge)
+        if (path.startswith("/ingest/") or path.startswith("/auth/")
+                or path.startswith("/api/link/") or path.startswith("/api/bridge/")):
             return await call_next(request)
 
         safe = request.method in ("GET", "HEAD", "OPTIONS")
