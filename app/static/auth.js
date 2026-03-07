@@ -3,8 +3,10 @@
 (function () {
   "use strict";
 
-  var TOKEN_KEY = "ogx_jwt";
-  var IS_LOGIN_PAGE = window.location.pathname === "/login";
+  var TOKEN_KEY    = "ogx_jwt";
+  var PATH         = window.location.pathname;
+  var IS_INDEX     = PATH === "/" || PATH === "";
+  var IS_LOGIN     = PATH === "/login";
 
   function qs(sel) { return document.querySelector(sel); }
   function getCsrfToken() {
@@ -14,12 +16,26 @@
   function getToken() { return (localStorage.getItem(TOKEN_KEY) || "").trim(); }
   function clearToken() { localStorage.removeItem(TOKEN_KEY); }
 
-  // ── i18n helper (window.I18N populated by i18n.js from server-injected data) ──
   function t(key, fallback) {
     return (window.I18N && window.I18N[key]) || fallback || key;
   }
 
-  // ── Token Popup ────────────────────────────────────────────────
+  // ── Index: show landing or app section ────────────────────────
+  function showLanding() {
+    var landing = qs("#landing-section");
+    var app     = qs("#app-section");
+    if (landing) landing.style.display = "";
+    if (app)     app.style.display = "none";
+  }
+
+  function showApp() {
+    var landing = qs("#landing-section");
+    var app     = qs("#app-section");
+    if (landing) landing.style.display = "none";
+    if (app)     app.style.display = "";
+  }
+
+  // ── Token Popup ───────────────────────────────────────────────
   function openPopup() {
     var popup    = qs("#token-popup");
     var backdrop = qs("#token-popup-backdrop");
@@ -60,12 +76,12 @@
         var val = ta.value;
         if (!val) return;
         if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(val).then(showCopied).catch(fallback);
-        } else { fallback(); }
+          navigator.clipboard.writeText(val).then(showCopied).catch(fallbackCopy);
+        } else { fallbackCopy(); }
       });
     }
 
-    function fallback() {
+    function fallbackCopy() {
       if (!ta) return;
       ta.select();
       try { document.execCommand("copy"); showCopied(); } catch(e) {}
@@ -75,16 +91,16 @@
       var btn = qs("#token-popup-copy");
       var copiedLabel = t("auth.copied", "Copied!");
       var copyLabel   = t("auth.copy",   "Copy Token");
-      if (btn) btn.textContent = "\u2713 " + copiedLabel;
+      if (btn)    btn.textContent    = "\u2713 " + copiedLabel;
       if (copied) copied.textContent = "\u2713 " + copiedLabel;
       setTimeout(function() {
-        if (btn) btn.textContent = copyLabel;
+        if (btn)    btn.textContent    = copyLabel;
         if (copied) copied.textContent = "";
       }, 2000);
     }
   }
 
-  // ── Mobile hamburger ───────────────────────────────────────────
+  // ── Mobile hamburger ──────────────────────────────────────────
   function bindHamburger() {
     var btn = qs("#nav-hamburger");
     var nav = qs("#main-nav");
@@ -93,7 +109,6 @@
       var open = nav.classList.toggle("nav-open");
       btn.setAttribute("aria-expanded", open ? "true" : "false");
     });
-    // Close on nav link click
     nav.querySelectorAll("a").forEach(function(a) {
       a.addEventListener("click", function() {
         nav.classList.remove("nav-open");
@@ -102,59 +117,46 @@
     });
   }
 
-  // ── Nav state ──────────────────────────────────────────────────
+  // ── Nav state ─────────────────────────────────────────────────
   function setLoggedIn(username) {
-    var statusEl   = qs("#auth-status");
     var usernameEl = qs("#auth-username");
-    var openEl     = qs("#auth-open");
     var logoutEl   = qs("#auth-logout");
     var prestigeEl = qs("#nav-prestige");
+    var linkNavEl  = qs("#nav-link-account");
 
-    if (statusEl)   statusEl.setAttribute("hidden", "");
-    if (usernameEl) { usernameEl.removeAttribute("hidden"); usernameEl.textContent = "\uD83C\uDFC6 " + username; }
-    if (openEl)     openEl.setAttribute("hidden", "");
+    if (usernameEl) { usernameEl.removeAttribute("hidden"); usernameEl.textContent = username; }
     if (logoutEl)   logoutEl.removeAttribute("hidden");
     if (prestigeEl) prestigeEl.removeAttribute("hidden");
-    var linkNavEl = qs("#nav-link-account");
     if (linkNavEl)  linkNavEl.removeAttribute("hidden");
 
-    // On login page: redirect to home after successful login
-    if (IS_LOGIN_PAGE) {
-      setTimeout(function() { window.location.href = "/"; }, 300);
-    }
+    if (IS_INDEX)  showApp();
+    if (IS_LOGIN)  window.location.replace("/");
   }
 
-  function setLoggedOut(expired) {
-    var statusEl   = qs("#auth-status");
+  function setLoggedOut() {
     var usernameEl = qs("#auth-username");
-    var openEl     = qs("#auth-open");
     var logoutEl   = qs("#auth-logout");
     var prestigeEl = qs("#nav-prestige");
+    var linkNavEl  = qs("#nav-link-account");
 
-    if (statusEl) {
-      statusEl.textContent = expired
-        ? t("auth.session_expired", "Session expired")
-        : t("auth.not_logged_in",   "Not logged in");
-      statusEl.removeAttribute("hidden");
-    }
     if (usernameEl) usernameEl.setAttribute("hidden", "");
-    if (openEl)     openEl.removeAttribute("hidden");
     if (logoutEl)   logoutEl.setAttribute("hidden", "");
     if (prestigeEl) prestigeEl.setAttribute("hidden", "");
-    var linkNavEl2 = qs("#nav-link-account");
-    if (linkNavEl2)  linkNavEl2.setAttribute("hidden", "");
+    if (linkNavEl)  linkNavEl.setAttribute("hidden", "");
     closePopup();
 
-    // Redirect to login if not already there
-    if (!IS_LOGIN_PAGE) {
-      window.location.href = "/login";
+    if (IS_INDEX) {
+      showLanding();
+    } else if (!IS_LOGIN) {
+      // Protected pages → back to index (shows landing)
+      window.location.replace("/");
     }
   }
 
-  // ── Status check ───────────────────────────────────────────────
+  // ── Status check ──────────────────────────────────────────────
   function refreshStatus() {
     var token = getToken();
-    if (!token) { setLoggedOut(false); return; }
+    if (!token) { setLoggedOut(); return; }
     fetch("/auth/me", { headers: { "Authorization": "Bearer " + token } })
       .then(function(r) { return r.ok ? r.json() : null; })
       .then(function(d) {
@@ -162,20 +164,20 @@
         var label = d.is_admin ? d.username + " \u2605" : d.username;
         setLoggedIn(label);
       })
-      .catch(function() { clearToken(); setLoggedOut(true); });
+      .catch(function() { clearToken(); setLoggedOut(); });
   }
 
-  // ── Logout ─────────────────────────────────────────────────────
+  // ── Logout ────────────────────────────────────────────────────
   function bindLogout() {
     var btn = qs("#auth-logout");
     if (!btn) return;
     btn.addEventListener("click", function() {
       clearToken();
-      setLoggedOut(false);
+      setLoggedOut();
     });
   }
 
-  // ── Fetch helper ───────────────────────────────────────────────
+  // ── Fetch helper ──────────────────────────────────────────────
   function ogxFetch(url, options) {
     var opts = options || {};
     var hdrs = {};
