@@ -1260,6 +1260,11 @@ async def _call_bridge(action: str, params: dict = {}) -> dict:
         return {"ok": False, "error": str(e)}
 
 
+@app.get("/privacy", response_class=HTMLResponse)
+async def privacy_page(request: Request):
+    return _template(request, "privacy.html", {"active_nav": "privacy"})
+
+
 @app.get("/link", response_class=HTMLResponse)
 async def link_page(request: Request):
     lang = get_lang(request)
