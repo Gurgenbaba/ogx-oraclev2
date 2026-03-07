@@ -1,4 +1,4 @@
-# app/main.py  -- deployed 2026-03-06 22:05 UTC
+# app/main.py
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
@@ -10,8 +10,8 @@ from collections import defaultdict
 import csv
 import io
 import re as _re
-import hmac
 import secrets
+import httpx
 
 from fastapi import FastAPI, Request, Form, UploadFile, File, Body
 from fastapi.middleware.cors import CORSMiddleware
@@ -34,7 +34,7 @@ from .prestige import (
     seed_achievements,
 )
 from .settings import settings
-from .i18n import get_lang, make_translator, get_translations_js, get_lang_switcher_data, SUPPORTED, LANG_COOKIE
+from .i18n import get_lang, make_translator, get_translations_js, SUPPORTED, FLAG, LABEL
 from .security import (
     CsrfMiddleware,
     MaxSizeMiddleware,
@@ -69,20 +69,7 @@ async def lifespan(app: FastAPI):
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
             # Bridge tables
-            # Note: ALTER TABLE done in separate conn below to isolate failures
-            # Bridge tables — dialect-aware
-            _lc_pg = """
-                CREATE TABLE IF NOT EXISTS link_codes (
-                    id SERIAL PRIMARY KEY,
-                    user_id INTEGER NOT NULL UNIQUE,
-                    code TEXT NOT NULL,
-                    created_at TIMESTAMP NOT NULL,
-                    used BOOLEAN NOT NULL DEFAULT FALSE,
-                    game_player_id INTEGER,
-                    game_username TEXT,
-                    verified_at TIMESTAMP
-                )"""
-            _lc_sq = """
+            await conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS link_codes (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id INTEGER NOT NULL UNIQUE,
@@ -92,199 +79,62 @@ async def lifespan(app: FastAPI):
                     game_player_id INTEGER,
                     game_username TEXT,
                     verified_at TIMESTAMP
-                )"""
-            _la_pg = """
-                CREATE TABLE IF NOT EXISTS linked_accounts (
-                    id SERIAL PRIMARY KEY,
-                    user_id INTEGER NOT NULL UNIQUE,
-                    game_player_id INTEGER NOT NULL,
-                    game_username TEXT NOT NULL,
-                    linked_at TIMESTAMP NOT NULL
-                )"""
-            _la_sq = """
+                )
+            """))
+            await conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS linked_accounts (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id INTEGER NOT NULL UNIQUE,
                     game_player_id INTEGER NOT NULL,
                     game_username TEXT NOT NULL,
                     linked_at TIMESTAMP NOT NULL
-                )"""
-            await conn.execute(text(_lc_pg if IS_POSTGRES else _lc_sq))
-            await conn.execute(text(_la_pg if IS_POSTGRES else _la_sq))
-            _sc_pg = """
-                CREATE TABLE IF NOT EXISTS smuggler_codes (
-                    id SERIAL PRIMARY KEY,
-                    code TEXT NOT NULL UNIQUE,
-                    reward_type TEXT NOT NULL DEFAULT 'prestige_xp',
-                    reward_value INTEGER NOT NULL DEFAULT 100,
-                    badge_id TEXT,
-                    max_uses INTEGER NOT NULL DEFAULT 1,
-                    uses_count INTEGER NOT NULL DEFAULT 0,
-                    created_at TIMESTAMP NOT NULL,
-                    expires_at TIMESTAMP,
-                    created_by TEXT
-                )"""
-            _sc_sq = """
-                CREATE TABLE IF NOT EXISTS smuggler_codes (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    code TEXT NOT NULL UNIQUE,
-                    reward_type TEXT NOT NULL DEFAULT 'prestige_xp',
-                    reward_value INTEGER NOT NULL DEFAULT 100,
-                    badge_id TEXT,
-                    max_uses INTEGER NOT NULL DEFAULT 1,
-                    uses_count INTEGER NOT NULL DEFAULT 0,
-                    created_at TIMESTAMP NOT NULL,
-                    expires_at TIMESTAMP,
-                    created_by TEXT
-                )"""
-            _scr_pg = """
-                CREATE TABLE IF NOT EXISTS smuggler_code_redemptions (
-                    id SERIAL PRIMARY KEY,
-                    code_id INTEGER NOT NULL,
-                    user_id INTEGER NOT NULL,
-                    redeemed_at TIMESTAMP NOT NULL,
-                    reward_type TEXT NOT NULL,
-                    reward_value INTEGER NOT NULL,
-                    UNIQUE (code_id, user_id)
-                )"""
-            _scr_sq = """
-                CREATE TABLE IF NOT EXISTS smuggler_code_redemptions (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    code_id INTEGER NOT NULL,
-                    user_id INTEGER NOT NULL,
-                    redeemed_at TIMESTAMP NOT NULL,
-                    reward_type TEXT NOT NULL,
-                    reward_value INTEGER NOT NULL,
-                    UNIQUE (code_id, user_id)
-                )"""
-            await conn.execute(text(_sc_pg if IS_POSTGRES else _sc_sq))
-            await conn.execute(text(_scr_pg if IS_POSTGRES else _scr_sq))
+                )
+            """))
+            # Safe migrations: add server_id if missing
+            for tbl in ("link_codes", "linked_accounts"):
+                try:
+                    await conn.execute(text(f"ALTER TABLE {tbl} ADD COLUMN server_id TEXT"))
+                except Exception:
+                    pass  # column already exists
         async with AsyncSessionLocal() as db:
             await seed_achievements(db)
     else:
-        # prod: verify DB reachable, then ensure schema exists
-        # Step 1: basic connectivity + SQLAlchemy models
+        # prod: verify DB reachable, then ensure prestige tables + achievements exist
         async with engine.begin() as conn:
             await conn.execute(text("SELECT 1"))
+            # Create any missing tables (safe: checkfirst=True via create_all)
             await conn.run_sync(Base.metadata.create_all)
-
-        # Step 2: each ALTER TABLE in its OWN transaction
-        # PostgreSQL: an exception inside a transaction poisons ALL subsequent statements.
-        # Fix: use a fresh connection+transaction per ALTER so failures are isolated.
-        for col, typ in [("debris_metal", "INTEGER"), ("debris_crystal", "INTEGER")]:
-            try:
-                async with engine.begin() as conn:
+            # Bridge tables
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS link_codes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL UNIQUE,
+                    code TEXT NOT NULL,
+                    created_at TIMESTAMP NOT NULL,
+                    used BOOLEAN NOT NULL DEFAULT 0,
+                    game_player_id INTEGER,
+                    game_username TEXT,
+                    verified_at TIMESTAMP
+                )
+            """))
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS linked_accounts (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL UNIQUE,
+                    game_player_id INTEGER NOT NULL,
+                    game_username TEXT NOT NULL,
+                    linked_at TIMESTAMP NOT NULL
+                )
+            """))
+            # Safe migrations: add server_id if missing
+            for tbl in ("link_codes", "linked_accounts"):
+                try:
                     await conn.execute(text(
-                        f"ALTER TABLE colonies ADD COLUMN {col} {typ} NOT NULL DEFAULT 0"
+                        f"ALTER TABLE {tbl} ADD COLUMN server_id TEXT"
                     ))
-            except Exception:
-                pass  # Column already exists — safe to ignore
-
-        # Migrate linked_accounts: add server_id column if missing
-        for stmt in [
-            "ALTER TABLE linked_accounts ADD COLUMN server_id TEXT NOT NULL DEFAULT 'uni1'",
-            "ALTER TABLE linked_accounts DROP CONSTRAINT IF EXISTS linked_accounts_user_id_key",
-            "ALTER TABLE linked_accounts ADD CONSTRAINT linked_accounts_user_server_uq UNIQUE (user_id, server_id)",
-        ]:
-            try:
-                async with engine.begin() as conn:
-                    await conn.execute(text(stmt))
-            except Exception:
-                pass  # Already migrated — safe to ignore
-
-        # Step 3: bridge tables — each in its own transaction
-        _bridge_tables_pg = [
-            """CREATE TABLE IF NOT EXISTS link_codes (
-                id SERIAL PRIMARY KEY,
-                user_id INTEGER NOT NULL UNIQUE,
-                code TEXT NOT NULL,
-                created_at TIMESTAMP NOT NULL,
-                used BOOLEAN NOT NULL DEFAULT FALSE,
-                game_player_id INTEGER,
-                game_username TEXT,
-                verified_at TIMESTAMP
-            )""",
-            """CREATE TABLE IF NOT EXISTS linked_accounts (
-                id SERIAL PRIMARY KEY,
-                user_id INTEGER NOT NULL,
-                server_id TEXT NOT NULL DEFAULT 'universum-1',
-                game_player_id INTEGER NOT NULL,
-                game_username TEXT NOT NULL,
-                linked_at TIMESTAMP NOT NULL,
-                UNIQUE (user_id, server_id)
-            )""",
-            """CREATE TABLE IF NOT EXISTS smuggler_codes (
-                id SERIAL PRIMARY KEY,
-                code TEXT NOT NULL UNIQUE,
-                reward_type TEXT NOT NULL DEFAULT 'prestige_xp',
-                reward_value INTEGER NOT NULL DEFAULT 100,
-                badge_id TEXT,
-                max_uses INTEGER NOT NULL DEFAULT 1,
-                uses_count INTEGER NOT NULL DEFAULT 0,
-                created_at TIMESTAMP NOT NULL,
-                expires_at TIMESTAMP,
-                created_by TEXT
-            )""",
-            """CREATE TABLE IF NOT EXISTS smuggler_code_redemptions (
-                id SERIAL PRIMARY KEY,
-                code_id INTEGER NOT NULL,
-                user_id INTEGER NOT NULL,
-                redeemed_at TIMESTAMP NOT NULL,
-                reward_type TEXT NOT NULL,
-                reward_value INTEGER NOT NULL,
-                UNIQUE (code_id, user_id)
-            )""",
-        ]
-        _bridge_tables_sq = [
-            """CREATE TABLE IF NOT EXISTS link_codes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL UNIQUE,
-                code TEXT NOT NULL,
-                created_at TIMESTAMP NOT NULL,
-                used BOOLEAN NOT NULL DEFAULT 0,
-                game_player_id INTEGER,
-                game_username TEXT,
-                verified_at TIMESTAMP
-            )""",
-            """CREATE TABLE IF NOT EXISTS linked_accounts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                server_id TEXT NOT NULL DEFAULT 'universum-1',
-                game_player_id INTEGER NOT NULL,
-                game_username TEXT NOT NULL,
-                linked_at TIMESTAMP NOT NULL,
-                UNIQUE (user_id, server_id)
-            )""",
-            """CREATE TABLE IF NOT EXISTS smuggler_codes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                code TEXT NOT NULL UNIQUE,
-                reward_type TEXT NOT NULL DEFAULT 'prestige_xp',
-                reward_value INTEGER NOT NULL DEFAULT 100,
-                badge_id TEXT,
-                max_uses INTEGER NOT NULL DEFAULT 1,
-                uses_count INTEGER NOT NULL DEFAULT 0,
-                created_at TIMESTAMP NOT NULL,
-                expires_at TIMESTAMP,
-                created_by TEXT
-            )""",
-            """CREATE TABLE IF NOT EXISTS smuggler_code_redemptions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                code_id INTEGER NOT NULL,
-                user_id INTEGER NOT NULL,
-                redeemed_at TIMESTAMP NOT NULL,
-                reward_type TEXT NOT NULL,
-                reward_value INTEGER NOT NULL,
-                UNIQUE (code_id, user_id)
-            )""",
-        ]
-        tables = _bridge_tables_pg if IS_POSTGRES else _bridge_tables_sq
-        for stmt in tables:
-            try:
-                async with engine.begin() as conn:
-                    await conn.execute(text(stmt))
-            except Exception:
-                pass  # Table already exists
-
+                    await conn.execute(text("SELECT 1"))  # force flush
+                except Exception:
+                    pass  # column already exists
         async with AsyncSessionLocal() as db:
             await seed_achievements(db)
 
@@ -344,8 +194,6 @@ def _template(request: Request, name: str, ctx: dict) -> HTMLResponse:
         "t":         make_translator(lang),
         "lang":      lang,
         "i18n_js":   get_translations_js(lang),
-        "lang_switcher": get_lang_switcher_data(lang),
-        "lang_switcher": get_lang_switcher_data(lang),
         "settings":  settings,
     }
     base.update(ctx)
@@ -542,7 +390,7 @@ async def api_leaderboard(request: Request):
         return JSONResponse({"ok": True, "leaderboard": board})
 
 
-@app.get("/api/i18n_data.js", include_in_schema=False)
+@app.get("/static/i18n_data.js", include_in_schema=False)
 async def i18n_data_js(request: Request):
     """Serve window.I18N as a JS file — CSP-safe alternative to inline <script>."""
     lang = get_lang(request)
@@ -715,11 +563,6 @@ async def prestige_page(request: Request):
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
     return _template(request, "login.html", {})
-
-def _consteq(a: str, b: str) -> bool:
-    """Constant-time string comparison to prevent timing attacks."""
-    return hmac.compare_digest(a.encode(), b.encode())
-
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request, q: str = "", ally: str = "", tab: str = ""):
@@ -1332,8 +1175,6 @@ async def ingest_galaxy(request: Request, payload: dict = Body(...)):
             ally = (r.get("ally") or "").strip()[:32] or None
             has_moon = bool(r.get("has_moon", False))
             moon_name = (r.get("moon_name") or "").strip()[:128] or None
-            debris_metal = int(r.get("debris_metal") or 0)
-            debris_crystal = int(r.get("debris_crystal") or 0)
 
             note_raw = (r.get("note") or "").strip()
             note = _re.sub(r"ALLY:\S+\s*", "", note_raw).strip()[:255] or None
@@ -1358,8 +1199,6 @@ async def ingest_galaxy(request: Request, payload: dict = Body(...)):
                 existing.moon_name = moon_name if has_moon else None
                 existing.last_seen_at = now
                 existing.source = SRC_HELPER
-                if debris_metal:   existing.debris_metal = debris_metal
-                if debris_crystal: existing.debris_crystal = debris_crystal
                 updated += 1
             else:
                 db.add(
@@ -1379,14 +1218,6 @@ async def ingest_galaxy(request: Request, payload: dict = Body(...)):
                         source=SRC_HELPER,
                     )
                 )
-                # Update debris via raw SQL (Colony model may lack these columns)
-                if debris_metal or debris_crystal:
-                    await db.flush()
-                    await db.execute(text(
-                        "UPDATE colonies SET debris_metal=:dm, debris_crystal=:dc "
-                        "WHERE player_id=:pid AND galaxy=:g AND system=:s AND position=:pos"
-                    ), {"dm": debris_metal or 0, "dc": debris_crystal or 0,
-                        "pid": p.id, "g": galaxy, "s": system, "pos": position})
                 imported += 1
 
         await _upsert_galaxy_scan(db, galaxy=galaxy, system=system, scanned_at=now, planets_found=len(rows))
@@ -1405,127 +1236,28 @@ async def ingest_galaxy(request: Request, payload: dict = Body(...)):
 
     return {"ok": True, "imported": imported, "updated": updated, "players_created": created_players}
 
-
-# ---------------------------------------------------------------------------
-# ---------------------------------------------------------------------------
-# Account self-deletion (DSGVO Art. 17)
-# ---------------------------------------------------------------------------
-
-@app.post("/api/account/delete")
-async def account_delete(request: Request):
-    """Permanently delete the authenticated user and all their data."""
-    async with AsyncSessionLocal() as db:
-        user, _err = await require_jwt_user(request, db)
-        if _err:
-            return _err
-
-        uid = int(user.id)
-
-        for tbl in [
-            "user_achievements",
-            "link_codes",
-            "linked_accounts",
-        ]:
-            try:
-                await db.execute(text(f"DELETE FROM {tbl} WHERE user_id = :uid"), {"uid": uid})
-            except Exception:
-                pass
-
-        await db.execute(text("DELETE FROM users WHERE id = :uid"), {"uid": uid})
-        await db.commit()
-        return {"ok": True}
-
-
-# ---------------------------------------------------------------------------
-# Language — persistent cookie
-# ---------------------------------------------------------------------------
-
-@app.post("/api/set-lang")
-async def set_lang(request: Request):
-    """Set language preference cookie. Body: {lang: "de"|"en"|"fr"}"""
-    body = await _read_json_or_form(request)
-    lang = (body.get("lang") or "").strip().lower()[:2]
-    if lang not in SUPPORTED:
-        return JSONResponse({"ok": False, "error": "unsupported language"}, status_code=400)
-    response = JSONResponse({"ok": True, "lang": lang})
-    response.set_cookie(
-        key=LANG_COOKIE,
-        value=lang,
-        max_age=60 * 60 * 24 * 365,  # 1 year
-        httponly=False,               # JS readable for display
-        samesite="lax",
-        secure=False,                 # Railway handles HTTPS at proxy level
-    )
-    return response
-
-
-# ── Language ─────────────────────────────────────────────────────────────────
-
-@app.post("/api/set-lang")
-async def api_set_lang(request: Request):
-    """Sprache als Cookie setzen. Body JSON: {lang: "de"|"en"|...}"""
-    try:
-        body = await request.json()
-    except Exception:
-        body = {}
-    lang = (body.get("lang") or "").strip().lower()[:2]
-    if lang not in SUPPORTED:
-        return JSONResponse({"ok": False, "error": "unsupported language"}, status_code=400)
-    resp = JSONResponse({"ok": True, "lang": lang})
-    resp.set_cookie(
-        key=LANG_COOKIE,
-        value=lang,
-        max_age=365 * 24 * 3600,
-        httponly=False,
-        samesite="lax",
-        secure=False,
-    )
-    return resp
-
-
 # ---------------------------------------------------------------------------
 # Glad Bridge — Account Linking & Galaxy Sync
 # ---------------------------------------------------------------------------
 
-def _bridge_url(action: str, params: dict = {}, server_id: str = "uni1") -> str:
+def _bridge_url(action: str, params: dict = {}) -> str:
     base = getattr(settings, "glad_bridge_url", "") or ""
     secret = getattr(settings, "glad_bridge_secret", "") or ""
-    p = f"action={action}&secret={secret}&server_id={server_id}"
+    p = f"action={action}&secret={secret}"
     for k, v in params.items():
-        if k != "server_id":  # avoid duplicate
-            p += f"&{k}={v}"
+        p += f"&{k}={v}"
     return f"{base}?{p}"
 
-async def _call_bridge(action: str, params: dict = {}, server_id: str = "uni1") -> dict:
+async def _call_bridge(action: str, params: dict = {}) -> dict:
     try:
         import httpx
-        url = _bridge_url(action, params, server_id=server_id)
+        url = _bridge_url(action, params)
         async with httpx.AsyncClient(timeout=8.0) as client:
             r = await client.get(url)
             r.raise_for_status()
             return r.json()
     except Exception as e:
         return {"ok": False, "error": str(e)}
-
-
-@app.get("/privacy", response_class=HTMLResponse)
-async def privacy_page(request: Request):
-    async with AsyncSessionLocal() as db:
-        current_user, _ = await require_jwt_user(request, db)
-    return _template(request, "privacy.html", {
-        "active_nav": "", "title": "Privacy Policy - OGX Oracle",
-        "current_user": current_user,
-    })
-
-
-@app.get("/settings", response_class=HTMLResponse)
-async def settings_page(request: Request):
-    async with AsyncSessionLocal() as db:
-        current_user, _ = await require_jwt_user(request, db)
-    return _template(request, "settings.html", {
-        "active_nav": "settings", "title": "Einstellungen - OGX Oracle",
-        "current_user": current_user,
-    })
 
 
 @app.get("/link", response_class=HTMLResponse)
@@ -1541,124 +1273,80 @@ async def link_page(request: Request):
 @app.post("/api/link/start")
 async def link_start(request: Request):
     async with AsyncSessionLocal() as db:
-        user, _err = await require_jwt_user(request, db)
-        if _err:
-            return _err
+        user = await require_jwt_user(request, db)
+        if isinstance(user, JSONResponse):
+            return user
+        body = {}
+        try:
+            body = await request.json()
+        except Exception:
+            pass
+        server_id = str(body.get("server_id") or "beta").strip().lower()
+        if server_id not in ("uni1", "beta"):
+            server_id = "beta"
         code = "OGX-" + secrets.token_hex(3).upper()
         now = _utcnow_naive()
         if IS_POSTGRES:
             await db.execute(text("""
-                INSERT INTO link_codes (user_id, code, created_at, used)
-                VALUES (:uid, :code, :now, false)
-                ON CONFLICT (user_id) DO UPDATE SET code = :code, created_at = :now, used = false
-            """), {"uid": user.id, "code": code, "now": now})
+                INSERT INTO link_codes (user_id, code, created_at, used, server_id)
+                VALUES (:uid, :code, :now, false, :sid)
+                ON CONFLICT (user_id) DO UPDATE SET code = :code, created_at = :now, used = false, server_id = :sid
+            """), {"uid": user.id, "code": code, "now": now, "sid": server_id})
         else:
             await db.execute(text("""
-                INSERT OR REPLACE INTO link_codes (user_id, code, created_at, used)
-                VALUES (:uid, :code, :now, 0)
-            """), {"uid": user.id, "code": code, "now": now})
+                INSERT OR REPLACE INTO link_codes (user_id, code, created_at, used, server_id)
+                VALUES (:uid, :code, :now, 0, :sid)
+            """), {"uid": user.id, "code": code, "now": now, "sid": server_id})
         await db.commit()
-        return {"ok": True, "code": code}
+        return {"ok": True, "code": code, "server_id": server_id}
 
 
 @app.post("/api/link/poll")
 async def link_poll(request: Request):
-    """
-    Client polls this after showing the code to the user.
-    Oracle calls Glad's verify endpoint; if the player has saved the code in OGX
-    Preferences, Glad returns player_id + username and we finalise the link.
-
-    Body JSON: { "server_id": "uni1" }   (optional, defaults to "uni1")
-    """
     async with AsyncSessionLocal() as db:
-        user, _err = await require_jwt_user(request, db)
-        if _err:
-            return _err
-
-        # Get user's pending link code
+        user = await require_jwt_user(request, db)
+        if isinstance(user, JSONResponse):
+            return user
         row = (await db.execute(
-            text("SELECT code, used FROM link_codes WHERE user_id = :uid"),
+            text("SELECT code, used, game_player_id, game_username, server_id FROM link_codes WHERE user_id = :uid"),
             {"uid": user.id}
         )).fetchone()
-
         if not row:
-            return JSONResponse({"ok": False, "error": "no_code"}, status_code=404)
+            return {"ok": False, "status": "no_code"}
         if row.used:
-            # Already linked — return existing account
-            linked = (await db.execute(
-                text("SELECT game_player_id, game_username, server_id FROM linked_accounts WHERE user_id = :uid LIMIT 1"),
-                {"uid": user.id}
-            )).fetchone()
-            return {"ok": True, "linked": True,
-                    "game_username": linked.game_username if linked else "",
-                    "game_player_id": linked.game_player_id if linked else None}
-
-        try:
-            body = await request.json()
-        except Exception:
-            body = {}
-        # Try all known servers until one confirms the code
-        # Glad's verify returns server_id in the response so we know which server matched
-        known_servers = ["uni1", "beta"]
-        bridge_result = None
-        for srv in known_servers:
-            result = await _call_bridge("verify", {"code": row.code}, server_id=srv)
-            if result.get("ok"):
-                bridge_result = result
-                break
-            if result.get("error") not in ("code_pending", "code_not_found", "unauthorized"):
-                # Unexpected error — still keep trying other servers
-                pass
-
-        if bridge_result is None:
-            # All servers returned code_pending / not found
-            return {"ok": True, "linked": False, "pending": True}
-
-        if not bridge_result.get("ok"):
-            err = bridge_result.get("error", "")
-            return {"ok": False, "error": err or "bridge_error"}
-
-        player_id = bridge_result.get("player_id")
-        username  = (bridge_result.get("username") or "").strip()
-        returned_server = (bridge_result.get("server_id") or "uni1").strip()
-
-        if not player_id or not username:
-            return {"ok": False, "error": "bridge_missing_fields"}
-
+            return {"ok": True, "status": "linked", "game_username": row.game_username, "server_id": row.server_id}
+        server_id = row.server_id or "beta"
+        result = await _call_bridge("verify", {"code": row.code, "server_id": server_id})
+        if not result.get("ok"):
+            return {"ok": False, "status": "pending"}
+        game_id = result.get("player_id")
+        game_user = result.get("username", "")
         now = _utcnow_naive()
-
-        # Mark code as used
         await db.execute(text("""
-            UPDATE link_codes
-            SET used = true, game_player_id = :gid, game_username = :gun, verified_at = :now
-            WHERE user_id = :uid
-        """), {"gid": player_id, "gun": username, "now": now, "uid": user.id})
-
-        # Upsert linked_accounts
+            UPDATE link_codes SET used = 1, game_player_id = :gid,
+            game_username = :gun, verified_at = :now WHERE user_id = :uid
+        """), {"gid": game_id, "gun": game_user, "uid": user.id, "now": now})
         if IS_POSTGRES:
             await db.execute(text("""
-                INSERT INTO linked_accounts (user_id, server_id, game_player_id, game_username, linked_at)
-                VALUES (:uid, :sid, :gid, :gun, :now)
-                ON CONFLICT (user_id, server_id) DO UPDATE
-                    SET game_player_id = :gid, game_username = :gun, linked_at = :now
-            """), {"uid": user.id, "sid": returned_server, "gid": player_id, "gun": username, "now": now})
+                INSERT INTO linked_accounts (user_id, game_player_id, game_username, linked_at, server_id)
+                VALUES (:uid, :gid, :gun, :now, :sid)
+                ON CONFLICT (user_id) DO UPDATE SET game_player_id=:gid, game_username=:gun, linked_at=:now, server_id=:sid
+            """), {"uid": user.id, "gid": game_id, "gun": game_user, "now": now, "sid": server_id})
         else:
             await db.execute(text("""
-                INSERT OR REPLACE INTO linked_accounts (user_id, server_id, game_player_id, game_username, linked_at)
-                VALUES (:uid, :sid, :gid, :gun, :now)
-            """), {"uid": user.id, "sid": returned_server, "gid": player_id, "gun": username, "now": now})
-
+                INSERT OR REPLACE INTO linked_accounts (user_id, game_player_id, game_username, linked_at, server_id)
+                VALUES (:uid, :gid, :gun, :now, :sid)
+            """), {"uid": user.id, "gid": game_id, "gun": game_user, "now": now, "sid": server_id})
         await db.commit()
-
-        return {"ok": True, "linked": True, "game_username": username, "game_player_id": player_id, "server_id": returned_server}
+        return {"ok": True, "status": "linked", "game_username": game_user, "server_id": server_id}
 
 
 @app.post("/api/link/unlink")
 async def link_unlink(request: Request):
     async with AsyncSessionLocal() as db:
-        user, _err = await require_jwt_user(request, db)
-        if _err:
-            return _err
+        user = await require_jwt_user(request, db)
+        if isinstance(user, JSONResponse):
+            return user
         await db.execute(text("DELETE FROM link_codes WHERE user_id = :uid"), {"uid": user.id})
         await db.execute(text("DELETE FROM linked_accounts WHERE user_id = :uid"), {"uid": user.id})
         await db.commit()
@@ -1669,65 +1357,64 @@ async def link_unlink(request: Request):
 async def bridge_status(request: Request):
     """Check if current user has a linked game account"""
     async with AsyncSessionLocal() as db:
-        user, _err = await require_jwt_user(request, db)
-        if _err:
-            return _err
-        try:
-            row = (await db.execute(
-                text("SELECT game_player_id, game_username, server_id FROM linked_accounts WHERE user_id = :uid LIMIT 1"),
-                {"uid": user.id}
-            )).fetchone()
-        except Exception:
-            # server_id column may not exist yet (migration pending) — fallback query
-            row = (await db.execute(
-                text("SELECT game_player_id, game_username FROM linked_accounts WHERE user_id = :uid LIMIT 1"),
-                {"uid": user.id}
-            )).fetchone()
+        user = await require_jwt_user(request, db)
+        if isinstance(user, JSONResponse):
+            return user
+        row = (await db.execute(
+            text("SELECT game_player_id, game_username, server_id FROM linked_accounts WHERE user_id = :uid"),
+            {"uid": user.id}
+        )).fetchone()
         if row:
-            server_id = getattr(row, "server_id", None) or "uni1"
-            return {"ok": True, "linked": True,
-                    "game_username": row.game_username,
-                    "game_player_id": row.game_player_id,
-                    "server_id": server_id}
+            return {"ok": True, "linked": True, "game_username": row.game_username, "game_player_id": row.game_player_id, "server_id": row.server_id or "beta"}
         return {"ok": True, "linked": False}
 
 
 @app.get("/api/bridge/expo")
 async def bridge_expo(request: Request):
     async with AsyncSessionLocal() as db:
-        user, _err = await require_jwt_user(request, db)
-        if _err:
-            return _err
-
-        # Get user's linked code + server
-        link_row = (await db.execute(
-            text("SELECT l.code, l.used, la.server_id FROM link_codes l "
-                 "LEFT JOIN linked_accounts la ON la.user_id = l.user_id "
-                 "WHERE l.user_id = :uid AND l.used = true LIMIT 1"),
+        user = await require_jwt_user(request, db)
+        if isinstance(user, JSONResponse):
+            return user
+        la = (await db.execute(
+            text("SELECT game_player_id, server_id FROM linked_accounts WHERE user_id = :uid"),
             {"uid": user.id}
         )).fetchone()
-        if not link_row:
+        if not la:
             return {"ok": False, "error": "not_linked"}
+        lc = (await db.execute(
+            text("SELECT code FROM link_codes WHERE user_id = :uid"),
+            {"uid": user.id}
+        )).fetchone()
+        server_id = la.server_id or "beta"
+        params: dict = {"server_id": server_id}
+        if lc:
+            params["code"] = lc.code
+        return await _call_bridge("expo", params)
 
-        server_id = (link_row.server_id or "uni1").strip()
-        since = request.query_params.get("since", "0")
-        limit = request.query_params.get("limit", "500")
 
-        # Fetch from Glad's bridge
-        result = await _call_bridge("expo", {"code": link_row.code, "since": since, "limit": limit}, server_id=server_id)
-        if not result.get("ok"):
-            return result
-
-        await db.commit()
+@app.get("/api/servers")
+async def api_servers():
+    """Returns available game servers from Bridge."""
+    result = await _call_bridge("servers", {})
+    if result.get("ok"):
         return result
+    # Fallback: return known servers if bridge unreachable
+    return {
+        "ok": True,
+        "server_id": "master",
+        "servers": [
+            {"server_id": "uni1", "display_name": "OGX Uni 1", "base_url": "https://uni1.playogx.com", "active": True},
+            {"server_id": "beta", "display_name": "OGX Beta",  "base_url": "https://beta.playogx.com",  "active": True},
+        ]
+    }
 
 
 @app.post("/api/bridge/galaxy")
 async def bridge_galaxy(request: Request, payload: dict = Body(...)):
     async with AsyncSessionLocal() as db:
-        user, _err = await require_jwt_user(request, db)
-        if _err:
-            return _err
+        user = await require_jwt_user(request, db)
+        if isinstance(user, JSONResponse):
+            return user
         galaxy = int(payload.get("galaxy", 0) or 0)
         system = int(payload.get("system", 0) or 0)
         if galaxy <= 0 or system <= 0:
