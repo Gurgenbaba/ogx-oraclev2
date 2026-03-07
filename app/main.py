@@ -389,6 +389,7 @@ async def api_leaderboard(request: Request):
         return JSONResponse({"ok": True, "leaderboard": board})
 
 
+@app.get("/api/i18n_data.js", include_in_schema=False)
 @app.get("/static/i18n_data.js", include_in_schema=False)
 async def i18n_data_js(request: Request):
     """Serve window.I18N as a JS file — CSP-safe alternative to inline <script>."""
@@ -1272,9 +1273,9 @@ async def link_page(request: Request):
 @app.post("/api/link/start")
 async def link_start(request: Request):
     async with AsyncSessionLocal() as db:
-        user = await require_jwt_user(request, db)
-        if isinstance(user, JSONResponse):
-            return user
+        user, _err = await require_jwt_user(request, db)
+        if _err:
+            return _err
         body = {}
         try:
             body = await request.json()
@@ -1303,9 +1304,9 @@ async def link_start(request: Request):
 @app.post("/api/link/poll")
 async def link_poll(request: Request):
     async with AsyncSessionLocal() as db:
-        user = await require_jwt_user(request, db)
-        if isinstance(user, JSONResponse):
-            return user
+        user, _err = await require_jwt_user(request, db)
+        if _err:
+            return _err
         row = (await db.execute(
             text("SELECT code, used, game_player_id, game_username, server_id FROM link_codes WHERE user_id = :uid"),
             {"uid": user.id}
@@ -1343,9 +1344,9 @@ async def link_poll(request: Request):
 @app.post("/api/link/unlink")
 async def link_unlink(request: Request):
     async with AsyncSessionLocal() as db:
-        user = await require_jwt_user(request, db)
-        if isinstance(user, JSONResponse):
-            return user
+        user, _err = await require_jwt_user(request, db)
+        if _err:
+            return _err
         await db.execute(text("DELETE FROM link_codes WHERE user_id = :uid"), {"uid": user.id})
         await db.execute(text("DELETE FROM linked_accounts WHERE user_id = :uid"), {"uid": user.id})
         await db.commit()
@@ -1356,9 +1357,9 @@ async def link_unlink(request: Request):
 async def bridge_status(request: Request):
     """Check if current user has a linked game account"""
     async with AsyncSessionLocal() as db:
-        user = await require_jwt_user(request, db)
-        if isinstance(user, JSONResponse):
-            return user
+        user, _err = await require_jwt_user(request, db)
+        if _err:
+            return _err
         row = (await db.execute(
             text("SELECT game_player_id, game_username, server_id FROM linked_accounts WHERE user_id = :uid"),
             {"uid": user.id}
@@ -1371,9 +1372,9 @@ async def bridge_status(request: Request):
 @app.get("/api/bridge/expo")
 async def bridge_expo(request: Request):
     async with AsyncSessionLocal() as db:
-        user = await require_jwt_user(request, db)
-        if isinstance(user, JSONResponse):
-            return user
+        user, _err = await require_jwt_user(request, db)
+        if _err:
+            return _err
         la = (await db.execute(
             text("SELECT game_player_id, server_id FROM linked_accounts WHERE user_id = :uid"),
             {"uid": user.id}
@@ -1411,9 +1412,9 @@ async def api_servers():
 @app.post("/api/bridge/galaxy")
 async def bridge_galaxy(request: Request, payload: dict = Body(...)):
     async with AsyncSessionLocal() as db:
-        user = await require_jwt_user(request, db)
-        if isinstance(user, JSONResponse):
-            return user
+        user, _err = await require_jwt_user(request, db)
+        if _err:
+            return _err
         galaxy = int(payload.get("galaxy", 0) or 0)
         system = int(payload.get("system", 0) or 0)
         if galaxy <= 0 or system <= 0:
