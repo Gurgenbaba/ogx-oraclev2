@@ -75,14 +75,6 @@
           </div>
         </div>
 
-        <div class="link-step">
-          <div class="link-step-num">4</div>
-          <div class="link-step-body">
-            <div class="link-step-title">{{ t('link.step4_title') }}</div>
-            <div class="link-step-desc">{{ t('link.step4_desc') }}</div>
-          </div>
-        </div>
-
         <div class="link-code-box" id="link-code-box" hidden>
           <div class="link-code" id="link-code">—</div>
           <div class="link-code-hint">{{ t('link.code_hint') }}</div>
@@ -102,5 +94,96 @@
 {% endblock %}
 
 {% block scripts %}
-  <script src="/static/link.js?v=2" defer></script>
+<script>
+(function() {
+  var pollTimer = null;
+
+  function qs(s) { return document.querySelector(s); }
+  function token() { return localStorage.getItem("ogx_jwt") || ""; }
+
+  function showStatus(msg, cls) {
+    var el = qs("#link-status");
+    el.textContent = msg;
+    el.className = "link-status " + cls;
+    el.hidden = false;
+  }
+
+  function showLinked(username) {
+    qs("#link-flow").hidden = true;
+    qs("#link-already").hidden = false;
+    qs("#link-linked-name").textContent = username;
+    if (pollTimer) clearInterval(pollTimer);
+  }
+
+  // Generate code
+  qs("#btn-generate").addEventListener("click", async function() {
+    this.disabled = true;
+    this.textContent = "...";
+    try {
+      var r = await fetch("/api/link/start", {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token() }
+      });
+      var d = await r.json();
+      if (!d.ok) { showStatus(d.error || "Error", "error"); this.disabled = false; return; }
+
+      qs("#link-code").textContent = d.code;
+      qs("#link-code-box").hidden = false;
+      qs("#btn-copy-code").hidden = false;
+      this.textContent = "{{ t('link.regenerate') }}";
+      this.disabled = false;
+      showStatus('<span class="link-spinner"></span>{{ t("link.waiting") }}', "pending");
+      qs("#link-status").innerHTML = '<span class="link-spinner"></span>{{ t("link.waiting") }}';
+
+      // Start polling every 5s
+      if (pollTimer) clearInterval(pollTimer);
+      pollTimer = setInterval(pollVerify, 5000);
+
+    } catch(e) {
+      showStatus("Network error", "error");
+      this.disabled = false;
+    }
+  });
+
+  // Copy code
+  qs("#btn-copy-code").addEventListener("click", function() {
+    var code = qs("#link-code").textContent;
+    navigator.clipboard.writeText(code).catch(function() {
+      var ta = document.createElement("textarea");
+      ta.value = code; document.body.appendChild(ta);
+      ta.select(); document.execCommand("copy");
+      document.body.removeChild(ta);
+    });
+    this.textContent = "✓ {{ t('auth.copied') }}";
+    setTimeout(() => { this.textContent = "{{ t('auth.copy') }}"; }, 2000);
+  });
+
+  // Poll for verification
+  async function pollVerify() {
+    try {
+      var r = await fetch("/api/link/poll", {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token() }
+      });
+      var d = await r.json();
+      if (d.ok && d.status === "linked") {
+        showLinked(d.game_username);
+        showStatus("✓ {{ t('link.success') }}: " + d.game_username, "linked");
+      }
+    } catch(e) {}
+  }
+
+  // Unlink
+  qs("#btn-unlink").addEventListener("click", async function() {
+    if (!confirm("{{ t('link.unlink_confirm') }}")) return;
+    await fetch("/api/link/unlink", {
+      method: "POST",
+      headers: { "Authorization": "Bearer " + token() }
+    });
+    qs("#link-flow").hidden = false;
+    qs("#link-already").hidden = true;
+  });
+
+})();
+</script>
 {% endblock %}
