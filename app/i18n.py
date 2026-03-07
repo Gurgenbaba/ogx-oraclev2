@@ -34,6 +34,12 @@ def _discover_supported() -> tuple[str, ...]:
 # Einmal beim Serverstart ermitteln
 SUPPORTED: tuple[str, ...] = _discover_supported()
 
+# Module-level dicts for convenient access in templates/routes
+# Populated after _flag() and get_label() are defined below,
+# but we forward-declare here and fill after function definitions.
+FLAG:  dict[str, str] = {}
+LABEL: dict[str, str] = {}
+
 
 @lru_cache(maxsize=None)
 def _load(lang: str) -> dict:
@@ -146,3 +152,8 @@ def get_lang_switcher_data(current: str) -> list[dict]:
         }
         for code in SUPPORTED
     ]
+
+
+# Populate module-level FLAG and LABEL dicts after all functions are defined
+FLAG.update({code: _flag(code) for code in SUPPORTED})
+LABEL.update({code: get_label(code) for code in SUPPORTED})
