@@ -70,7 +70,7 @@ async def lifespan(app: FastAPI):
             # Bridge tables
             await conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS link_codes (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
                     user_id INTEGER NOT NULL UNIQUE,
                     code TEXT NOT NULL,
                     created_at TIMESTAMP NOT NULL,
@@ -82,7 +82,7 @@ async def lifespan(app: FastAPI):
             """))
             await conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS linked_accounts (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
                     user_id INTEGER NOT NULL UNIQUE,
                     game_player_id INTEGER NOT NULL,
                     game_username TEXT NOT NULL,
@@ -106,7 +106,7 @@ async def lifespan(app: FastAPI):
             # Bridge tables
             await conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS link_codes (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
                     user_id INTEGER NOT NULL UNIQUE,
                     code TEXT NOT NULL,
                     created_at TIMESTAMP NOT NULL,
@@ -118,7 +118,7 @@ async def lifespan(app: FastAPI):
             """))
             await conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS linked_accounts (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
                     user_id INTEGER NOT NULL UNIQUE,
                     game_player_id INTEGER NOT NULL,
                     game_username TEXT NOT NULL,
