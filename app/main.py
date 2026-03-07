@@ -11,7 +11,6 @@ import csv
 import io
 import re as _re
 import secrets
-import httpx
 
 from fastapi import FastAPI, Request, Form, UploadFile, File, Body
 from fastapi.middleware.cors import CORSMiddleware
