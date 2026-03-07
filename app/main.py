@@ -33,7 +33,7 @@ from .prestige import (
     seed_achievements,
 )
 from .settings import settings
-from .i18n import get_lang, make_translator, get_translations_js, SUPPORTED, FLAG, LABEL
+from .i18n import get_lang, make_translator, get_translations_js, get_lang_switcher_data, SUPPORTED, FLAG, LABEL
 from .security import (
     CsrfMiddleware,
     MaxSizeMiddleware,
@@ -188,12 +188,13 @@ def _template(request: Request, name: str, ctx: dict) -> HTMLResponse:
     csrf_token = getattr(request.state, "csrf_token", None) or request.cookies.get(CSRF_COOKIE) or ""
     lang = get_lang(request)
     base = {
-        "request":   request,
-        "csrf_token": csrf_token,
-        "t":         make_translator(lang),
-        "lang":      lang,
-        "i18n_js":   get_translations_js(lang),
-        "settings":  settings,
+        "request":      request,
+        "csrf_token":   csrf_token,
+        "t":            make_translator(lang),
+        "lang":         lang,
+        "i18n_js":      get_translations_js(lang),
+        "settings":     settings,
+        "lang_switcher": get_lang_switcher_data(lang),
     }
     base.update(ctx)
     return templates.TemplateResponse(request, name, base)
@@ -403,6 +404,22 @@ async def i18n_data_js(request: Request):
         media_type="application/javascript",
         headers={"Cache-Control": "no-cache"},
     )
+
+
+@app.post("/api/set-lang", include_in_schema=False)
+async def set_lang(request: Request):
+    """Set language preference via cookie."""
+    try:
+        body = await request.json()
+        lang = str(body.get("lang", "")).strip().lower()[:2]
+    except Exception:
+        lang = ""
+    if lang not in SUPPORTED:
+        lang = "en"
+    from fastapi.responses import JSONResponse
+    resp = JSONResponse({"ok": True, "lang": lang})
+    resp.set_cookie("ogx_lang", lang, max_age=60*60*24*365, samesite="lax", httponly=False)
+    return resp
 
 
 @app.get("/healthz")

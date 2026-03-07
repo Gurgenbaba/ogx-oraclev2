@@ -1579,3 +1579,12 @@ details > summary::-webkit-details-marker {
   .topbar-left { gap: 8px; }
   .lang-btn { font-size: .65rem; padding: 2px 4px; }
 }
+
+/* ── Footer privacy link ────────────────────────────────────────────────── */
+.footer-privacy-link {
+  color: inherit;
+  opacity: .55;
+  text-decoration: none;
+  transition: opacity .15s;
+}
+.footer-privacy-link:hover { opacity: 1; }
